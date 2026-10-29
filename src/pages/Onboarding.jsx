@@ -8,10 +8,12 @@ const STEPS = ['welcome', 'name', 'goal', 'assessment', 'level', 'timeline', 're
 export default function Onboarding() {
   const setUserProfile = useAppStore((s) => s.setUserProfile);
   const theme = useAppStore((s) => s.theme);
+  const supabaseUser = useAppStore((s) => s.supabaseUser);
+  const initialName = supabaseUser?.user_metadata?.display_name || supabaseUser?.displayName || '';
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
-    name: '',
+    name: initialName,
     goal: '',
     selfAssessment: '',  // reason for learning
     level: '',
