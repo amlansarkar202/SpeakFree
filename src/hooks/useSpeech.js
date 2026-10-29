@@ -54,53 +54,8 @@ export function unlockAudio() {
   }
 }
 
-// Browser speech synthesis fallback with natural female voice priority if offline
-function speakBrowserFallback(cleanText) {
-  return new Promise((resolve) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) {
-      return resolve(false);
-    }
-
-    try {
-      window.speechSynthesis.cancel();
-      const hasBengali = /[\u0980-\u09FF]/.test(cleanText);
-      const utter = new SpeechSynthesisUtterance(cleanText);
-      utter.rate = hasBengali ? 0.95 : 0.92;
-      utter.pitch = 1.05; // Slightly higher, warm female tone
-
-      const voices = window.speechSynthesis.getVoices();
-      if (hasBengali) {
-        utter.lang = 'bn-IN';
-        const bnVoice = voices.find(
-          (v) =>
-            v.name.toLowerCase().includes('tanishaa') ||
-            v.name.toLowerCase().includes('bengali') ||
-            v.name.toLowerCase().includes('bangla') ||
-            v.lang.startsWith('bn')
-        );
-        if (bnVoice) utter.voice = bnVoice;
-      } else {
-        utter.lang = 'en-US';
-        const enVoice = voices.find(
-          (v) =>
-            (v.name.toLowerCase().includes('natural') ||
-              v.name.toLowerCase().includes('neural') ||
-              v.name.toLowerCase().includes('jenny') ||
-              v.name.toLowerCase().includes('zira') ||
-              v.name.toLowerCase().includes('samantha')) &&
-            v.lang.startsWith('en')
-        );
-        if (enVoice) utter.voice = enVoice;
-      }
-
-      utter.onend = () => resolve(true);
-      utter.onerror = () => resolve(false);
-      window.speechSynthesis.speak(utter);
-    } catch {
-      resolve(false);
-    }
-  });
-}
+// SpeakFree exclusively uses high-fidelity neural audio (/api/tts)
+// All robotic browser speech synthesis fallbacks are permanently disabled.
 
 // ── BILINGUAL TEXT-TO-SPEECH (TTS) ──────────────────────────────────────────
 export function useTTS() {
@@ -188,12 +143,9 @@ export function useTTS() {
           }
         });
       } catch (err) {
-        console.warn('Network TTS notice, attempting browser natural voice fallback:', err.message);
+        console.warn('TTS playback notice:', err.message);
         if (!isCancelledRef.current) {
-          await speakBrowserFallback(cleanText);
-          if (!isCancelledRef.current) {
-            setSpeaking(false);
-          }
+          setSpeaking(false);
         }
       }
     },
