@@ -21,36 +21,33 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: 'Empty text after cleaning' });
     }
 
-    // 2. Split into sentence chunks (max 160 chars per chunk for Google TTS limit)
-    const rawChunks = cleanText.split(/(?<=[.!?।\n])\s+/);
-    const chunks = [];
+    // 2. Intelligent bilingual chunking (Bengali parts in Bengali, English parts in English)
+    const rawSentences = cleanText.split(/(?<=[.!?।\n])\s+/);
+    const finalChunks = [];
 
-    for (const chunk of rawChunks) {
-      const trimmed = chunk.trim();
+    for (const sent of rawSentences) {
+      const trimmed = sent.trim();
       if (!trimmed) continue;
-      if (trimmed.length <= 160) {
-        chunks.push(trimmed);
-      } else {
-        // Subdivide large chunk by commas or spaces
-        const parts = trimmed.split(/(?<=[,;])\s+/);
-        let curr = '';
-        for (const p of parts) {
-          if ((curr + ' ' + p).length <= 160) {
-            curr = curr ? curr + ' ' + p : p;
-          } else {
-            if (curr) chunks.push(curr);
-            curr = p;
-          }
+      const hasBn = /[\u0980-\u09FF]/.test(trimmed);
+      const hasEn = /[a-zA-Z]/.test(trimmed);
+
+      if (hasBn && hasEn) {
+        // Subdivide mixed sentence by quotes or clauses
+        const sub = trimmed.split(/(["'].*?["'])/);
+        for (const s of sub) {
+          const str = s.trim().replace(/["']/g, '');
+          if (str) finalChunks.push(str.slice(0, 160));
         }
-        if (curr) chunks.push(curr);
+      } else {
+        finalChunks.push(trimmed.slice(0, 160));
       }
     }
 
-    const finalChunks = chunks.length > 0 ? chunks : [cleanText.slice(0, 160)];
+    const chunksToProcess = finalChunks.length > 0 ? finalChunks.slice(0, 8) : [cleanText.slice(0, 160)];
 
     // 3. Fetch each chunk with appropriate voice (Bengali or English)
     const audioBuffers = [];
-    for (const ch of finalChunks.slice(0, 6)) {
+    for (const ch of chunksToProcess) {
       const hasBengali = /[\u0980-\u09FF]/.test(ch);
       const chunkLang = requestedLang
         ? (requestedLang.startsWith('bn') ? 'bn' : 'en')

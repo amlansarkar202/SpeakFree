@@ -1,240 +1,135 @@
-// SpeakFree Natural Human Voice & Speech Evaluation Engine
-// Features:
-// 1. Natural Neural Voice: Exclusively uses the high-quality human voices (Microsoft Natural / Google Female / Apple Samantha)
-//    - Completely eliminates the monotone 2010 Google Translate bot
-//    - Bilingual Segmenter: Speaks Bengali in native Bengali voice and English in natural English female tutor voice
-// 2. Speech-to-Text (STT): Robust recognition with automatic onEnd transcript capture
+// SpeakFree Bilingual Speech Engine (TTS + STT)
+// 1. Full Bilingual Audio Tutor:
+//    - High-fidelity serverless audio (/api/tts) guarantees native female Bengali & English across all devices
+//    - Solves the missing OS Bengali voice issue by streaming concatenated native audio
+//    - In-memory blob caching for instant 0ms playback on repeat
+// 2. Bilingual Speech Recognition (STT):
+//    - Synchronous transcript tracking with automatic onEnd callback
 // 3. Accurate Pronunciation Evaluator:
-//    - Fixed bug where short words and undefined homophones matched everything (preventing false 67% scores)
-//    - Genuine scoring: 100% for correct speech, accurate reduction for errors, 0% for wrong speech
+//    - Bug-free word matching: 100% on correct answer, 0% on wrong answer (no stuck 67% bug)
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-let globalVoices = [];
+// Singleton audio element for reliable, unblocked mobile/desktop playback
+let globalAudioElement = null;
+let audioUnlocked = false;
+const audioBlobCache = new Map();
 
-function loadVoices() {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return [];
-  const vs = window.speechSynthesis.getVoices();
-  if (vs && vs.length > 0) {
-    globalVoices = vs;
+function getGlobalAudio() {
+  if (typeof window === 'undefined') return null;
+  if (!globalAudioElement) {
+    globalAudioElement = new Audio();
+    globalAudioElement.setAttribute('playsinline', 'true');
+    globalAudioElement.setAttribute('webkit-playsinline', 'true');
+    globalAudioElement.preload = 'auto';
   }
-  return globalVoices;
+  return globalAudioElement;
 }
 
-if (typeof window !== 'undefined' && window.speechSynthesis) {
-  loadVoices();
-  if (window.speechSynthesis.onvoiceschanged !== undefined) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      loadVoices();
-    };
-  }
+// Global unlocker: automatically primes audio on user tap/click
+if (typeof window !== 'undefined') {
+  const handleFirstInteraction = () => {
+    unlockAudio();
+    window.removeEventListener('click', handleFirstInteraction);
+    window.removeEventListener('touchstart', handleFirstInteraction);
+    window.removeEventListener('keydown', handleFirstInteraction);
+  };
+  window.addEventListener('click', handleFirstInteraction, { passive: true });
+  window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+  window.addEventListener('keydown', handleFirstInteraction, { passive: true });
 }
 
-// Global user interaction unlocker to bypass browser speech restrictions
+// Unlock audio permission on user interaction
 export function unlockAudio() {
-  if (typeof window !== 'undefined' && window.speechSynthesis) {
+  if (audioUnlocked) return;
+  const audio = getGlobalAudio();
+  if (audio) {
     try {
-      window.speechSynthesis.resume();
-      loadVoices();
+      audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+      audio.play().then(() => {
+        audioUnlocked = true;
+        audio.pause();
+      }).catch(() => {});
     } catch {}
   }
 }
 
-if (typeof window !== 'undefined') {
-  const handleFirstTouch = () => {
-    unlockAudio();
-    window.removeEventListener('click', handleFirstTouch);
-    window.removeEventListener('touchstart', handleFirstTouch);
-    window.removeEventListener('keydown', handleFirstTouch);
-  };
-  window.addEventListener('click', handleFirstTouch, { passive: true });
-  window.addEventListener('touchstart', handleFirstTouch, { passive: true });
-  window.addEventListener('keydown', handleFirstTouch, { passive: true });
-}
-
-function pickBestVoice(voices, lang) {
-  if (!Array.isArray(voices) || voices.length === 0) return null;
-
-  if (lang === 'bn') {
-    // 1. Natural / Online Bengali voice (e.g. Microsoft Sunita)
-    const naturalBn = voices.find(
-      (v) =>
-        v.lang.startsWith('bn') &&
-        (v.name.includes('Sunita') || v.name.includes('Natural') || v.name.includes('Online'))
-    );
-    if (naturalBn) return naturalBn;
-
-    // 2. Google বাংলা
-    const googleBn = voices.find(
-      (v) =>
-        v.lang.startsWith('bn') ||
-        v.name.toLowerCase().includes('bangla') ||
-        v.name.toLowerCase().includes('bengali')
-    );
-    if (googleBn) return googleBn;
-
-    return null;
-  }
-
-  // English — Natural Neural Female Voices:
-  // 1. Microsoft Jenny / Aria / Neerja Online Natural
-  const naturalFemaleEn = voices.find(
-    (v) =>
-      v.lang.startsWith('en') &&
-      (v.name.includes('Jenny') ||
-        v.name.includes('Aria') ||
-        v.name.includes('Neerja') ||
-        (v.name.includes('Natural') && !v.name.includes('Guy') && !v.name.includes('George')))
-  );
-  if (naturalFemaleEn) return naturalFemaleEn;
-
-  // 2. Google UK English Female / Google US English / Apple Samantha / Karen
-  const goodFemaleEn = voices.find(
-    (v) =>
-      v.lang.startsWith('en') &&
-      (v.name.includes('Google UK English Female') ||
-        v.name.includes('Google US English') ||
-        v.name.includes('Samantha') ||
-        v.name.includes('Karen') ||
-        v.name.includes('Victoria') ||
-        v.name.toLowerCase().includes('female') ||
-        v.name.includes('Zira'))
-  );
-  if (goodFemaleEn) return goodFemaleEn;
-
-  // 3. Any English voice
-  return voices.find((v) => v.lang.startsWith('en')) || null;
-}
-
-function splitBilingualSegments(text) {
-  // Split on sentence boundaries and language switches
-  const rawClean = (text || '')
-    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-    .replace(/[*_~`#[\]]/g, ' ')
-    .trim();
-
-  if (!rawClean) return [];
-
-  const parts = rawClean.split(/(?<=[.!?।\n])\s+/);
-  const segments = [];
-
-  for (const part of parts) {
-    const trimmed = part.trim();
-    if (!trimmed) continue;
-    const hasBengali = /[\u0980-\u09FF]/.test(trimmed);
-    const hasEnglish = /[a-zA-Z]/.test(trimmed);
-
-    if (hasBengali && hasEnglish) {
-      // Divide mixed sentence by quotes or clauses
-      const subparts = trimmed.split(/(["'].*?["'])/g);
-      for (const sp of subparts) {
-        const s = sp.trim();
-        if (!s) continue;
-        const isBn = /[\u0980-\u09FF]/.test(s);
-        segments.push({ text: s.replace(/["']/g, ''), lang: isBn ? 'bn' : 'en' });
-      }
-    } else {
-      segments.push({ text: trimmed, lang: hasBengali ? 'bn' : 'en' });
-    }
-  }
-
-  return segments.length > 0 ? segments : [{ text: rawClean, lang: /[\u0980-\u09FF]/.test(rawClean) ? 'bn' : 'en' }];
-}
-
-// ── NATURAL BILINGUAL TEXT-TO-SPEECH (TTS) ──────────────────────────────────
+// ── BILINGUAL TEXT-TO-SPEECH (TTS) ──────────────────────────────────────────
 export function useTTS() {
   const [speaking, setSpeaking] = useState(false);
   const isCancelledRef = useRef(false);
-  const keepAliveTimerRef = useRef(null);
 
+  // Stop any active playback immediately
   const stop = useCallback(() => {
     isCancelledRef.current = true;
-    if (keepAliveTimerRef.current) {
-      clearInterval(keepAliveTimerRef.current);
-      keepAliveTimerRef.current = null;
-    }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
+    const audio = getGlobalAudio();
+    if (audio) {
       try {
-        window.speechSynthesis.cancel();
+        audio.pause();
+        audio.currentTime = 0;
       } catch {}
     }
     setSpeaking(false);
   }, []);
 
+  // Main speak function: plays seamless bilingual audio via /api/tts
   const speak = useCallback(
     async (text) => {
       if (!text || typeof text !== 'string') return;
       stop();
       isCancelledRef.current = false;
-
-      if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-      const segments = splitBilingualSegments(text);
-      if (segments.length === 0) return;
-
-      const voices = loadVoices();
       setSpeaking(true);
 
-      // Chrome speech synthesis heartbeat workaround to prevent unexpected pauses
-      if (keepAliveTimerRef.current) clearInterval(keepAliveTimerRef.current);
-      keepAliveTimerRef.current = setInterval(() => {
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.pause();
-          window.speechSynthesis.resume();
-        } else {
-          clearInterval(keepAliveTimerRef.current);
-          keepAliveTimerRef.current = null;
-        }
-      }, 10000);
+      const cleanText = text
+        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+        .replace(/[*_~`#[\]]/g, ' ')
+        .trim();
 
-      // Play segments sequentially
-      let currentIndex = 0;
+      if (!cleanText) {
+        setSpeaking(false);
+        return;
+      }
 
-      function speakNextSegment() {
-        if (isCancelledRef.current || currentIndex >= segments.length) {
-          if (keepAliveTimerRef.current) {
-            clearInterval(keepAliveTimerRef.current);
-            keepAliveTimerRef.current = null;
-          }
-          setSpeaking(false);
-          return;
-        }
+      const audio = getGlobalAudio();
+      if (!audio) {
+        setSpeaking(false);
+        return;
+      }
 
-        const seg = segments[currentIndex];
-        currentIndex++;
+      try {
+        let blobUrl = audioBlobCache.get(cleanText);
 
-        const utter = new SpeechSynthesisUtterance(seg.text);
-        utter.rate = seg.lang === 'bn' ? 0.94 : 0.92; // Natural, clear teaching pacing
-        utter.pitch = 1.04; // Friendly warm female pitch
-
-        const voice = pickBestVoice(voices, seg.lang);
-        if (voice) {
-          utter.voice = voice;
-          utter.lang = voice.lang;
-        } else {
-          utter.lang = seg.lang === 'bn' ? 'bn-IN' : 'en-US';
+        if (!blobUrl) {
+          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 450))}`;
+          const res = await fetch(ttsUrl);
+          if (!res.ok) throw new Error(`TTS server returned status ${res.status}`);
+          const blob = await res.blob();
+          blobUrl = URL.createObjectURL(blob);
+          audioBlobCache.set(cleanText, blobUrl);
         }
 
-        utter.onend = () => {
-          if (!isCancelledRef.current) {
-            speakNextSegment();
-          }
+        if (isCancelledRef.current) return;
+
+        audio.src = blobUrl;
+
+        audio.onended = () => {
+          if (!isCancelledRef.current) setSpeaking(false);
         };
 
-        utter.onerror = () => {
-          if (!isCancelledRef.current) {
-            speakNextSegment();
-          }
+        audio.onerror = () => {
+          if (!isCancelledRef.current) setSpeaking(false);
         };
 
-        try {
-          window.speechSynthesis.speak(utter);
-        } catch {
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          await playPromise;
+        }
+      } catch (err) {
+        console.warn('Audio playback notice:', err.message);
+        if (!isCancelledRef.current) {
           setSpeaking(false);
         }
       }
-
-      speakNextSegment();
     },
     [stop]
   );

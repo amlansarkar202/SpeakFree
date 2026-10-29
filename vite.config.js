@@ -29,33 +29,31 @@ function ttsDevPlugin() {
             return res.end(JSON.stringify({ error: 'Empty text' }));
           }
 
-          const rawChunks = cleanText.split(/(?<=[.!?।\n])\s+/);
-          const chunks = [];
+          // 2. Intelligent bilingual chunking
+          const rawSentences = cleanText.split(/(?<=[.!?।\n])\s+/);
+          const finalChunks = [];
 
-          for (const chunk of rawChunks) {
-            const trimmed = chunk.trim();
+          for (const sent of rawSentences) {
+            const trimmed = sent.trim();
             if (!trimmed) continue;
-            if (trimmed.length <= 160) {
-              chunks.push(trimmed);
-            } else {
-              const parts = trimmed.split(/(?<=[,;])\s+/);
-              let curr = '';
-              for (const p of parts) {
-                if ((curr + ' ' + p).length <= 160) {
-                  curr = curr ? curr + ' ' + p : p;
-                } else {
-                  if (curr) chunks.push(curr);
-                  curr = p;
-                }
+            const hasBn = /[\u0980-\u09FF]/.test(trimmed);
+            const hasEn = /[a-zA-Z]/.test(trimmed);
+
+            if (hasBn && hasEn) {
+              const sub = trimmed.split(/(["'].*?["'])/);
+              for (const s of sub) {
+                const str = s.trim().replace(/["']/g, '');
+                if (str) finalChunks.push(str.slice(0, 160));
               }
-              if (curr) chunks.push(curr);
+            } else {
+              finalChunks.push(trimmed.slice(0, 160));
             }
           }
 
-          const finalChunks = chunks.length > 0 ? chunks : [cleanText.slice(0, 160)];
+          const chunksToProcess = finalChunks.length > 0 ? finalChunks.slice(0, 8) : [cleanText.slice(0, 160)];
           const audioBuffers = [];
 
-          for (const ch of finalChunks.slice(0, 6)) {
+          for (const ch of chunksToProcess) {
             const hasBengali = /[\u0980-\u09FF]/.test(ch);
             const chunkLang = requestedLang
               ? (requestedLang.startsWith('bn') ? 'bn' : 'en')
