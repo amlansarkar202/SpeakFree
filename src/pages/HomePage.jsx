@@ -3,7 +3,7 @@ import { Zap, Flame, BookOpen, MessageCircle, Target, ChevronRight, Mic, Trophy,
 import useAppStore from '../store/useAppStore';
 import { CURRICULUM, getAllLessons } from '../data/curriculum';
 import LessonView from '../components/LessonView';
-import { useTTS } from '../hooks/useSpeech';
+import { useTTS, unlockAudio } from '../hooks/useSpeech';
 
 function StatCard({ icon: Icon, value, label, color, theme }) {
   const isDark = theme === 'dark';
@@ -35,7 +35,7 @@ export default function HomePage() {
   const setActivePage    = useAppStore((s) => s.setActivePage);
 
   const [activeLesson, setActiveLesson] = useState(null);
-  const { speak, speaking } = useTTS();
+  const { speak, stop, speaking } = useTTS();
 
   const isDark = theme === 'dark';
   const levelKey = userProfile?.level || 'beginner';
@@ -51,8 +51,13 @@ export default function HomePage() {
   const units = CURRICULUM[levelKey] || CURRICULUM.beginner;
 
   function playNovaDailyTip() {
-    const tip = `নমস্কার ${userProfile?.name || 'বন্ধু'}! Today's speaking goal is: ${nextLesson?.title}. যখন কথা বলবে, ভুল হওয়ার ভয় করবে না। Listen to my pronunciation, and repeat after me. Let us begin!`;
-    speak(tip);
+    unlockAudio();
+    if (speaking) {
+      stop();
+    } else {
+      const tip = `নমস্কার ${userProfile?.name || 'বন্ধু'}! Today's speaking goal is: ${nextLesson?.title}. যখন কথা বলবে, ভুল হওয়ার ভয় করবে না। Listen to my pronunciation, and repeat after me. Let us begin!`;
+      speak(tip);
+    }
   }
 
   if (activeLesson) {

@@ -1,0 +1,22 @@
+{
+  "name": "SpeakFree — AI Spoken English Tutor",
+  "short_name": "SpeakFree",
+  "description": "Learn to speak fluent English with Nova, your personal AI tutor.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f1623",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

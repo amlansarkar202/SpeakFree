@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Volume2, VolumeX, ChevronRight, X, Mic, MicOff, CheckCircle2, AlertCircle, Zap, Sparkles, RefreshCw, Award, ArrowRight } from 'lucide-react';
+import { Volume2, ChevronRight, X, Mic, MicOff, CheckCircle2, AlertCircle, Zap, Sparkles, RefreshCw, Award, ArrowRight, Square } from 'lucide-react';
 import useAppStore from '../store/useAppStore';
-import { useTTS, useSTT, evaluateSpokenAccuracy } from '../hooks/useSpeech';
+import { useTTS, useSTT, evaluateSpokenAccuracy, unlockAudio } from '../hooks/useSpeech';
 import { evaluateResponse } from '../services/geminiService';
 
 export default function LessonView({ lesson, onClose }) {
@@ -10,10 +10,6 @@ export default function LessonView({ lesson, onClose }) {
   const completedLesson = useAppStore((s) => s.completedLesson);
   const userProfile     = useAppStore((s) => s.userProfile);
 
-  // Lesson Progression:
-  // Step 0 -> (N - 1): Interactive phrase repetition with strict accuracy validation
-  // Step N: Conversational Speaking Challenge evaluated by Gemini AI
-  // Step N + 1: Official Graduation & XP celebration
   const phrases = lesson.content?.phrases || [
     { english: 'Hello, nice to meet you.', bengali: 'নমস্কার, আপনার সাথে দেখা হয়ে ভালো লাগলো।' },
     { english: 'How are you doing today?', bengali: 'আজকে আপনি কেমন আছেন?' },
@@ -37,7 +33,6 @@ export default function LessonView({ lesson, onClose }) {
   const { listening, transcript, startListening, stopListening, resetTranscript } = useSTT();
 
   const isDark = theme === 'dark';
-  const hasSpokenIntroRef = useRef(false);
 
   const isChallengeStep = currentStepIndex === phrases.length;
   const isCompletedStep = currentStepIndex > phrases.length;
@@ -48,23 +43,30 @@ export default function LessonView({ lesson, onClose }) {
     return () => stop();
   }, [stop]);
 
-  // Nova introduces the current step verbally
+  // Current verbal instruction from Nova
+  function getStepIntro() {
+    if (currentPhrase) {
+      return `চলো এটা শিখি: "${currentPhrase.english}". মানে হলো: ${currentPhrase.bengali}. Listen carefully: "${currentPhrase.english}". Now repeat after me!`;
+    } else if (isChallengeStep) {
+      return `দারুণ! সবকটি বাক্য তুমি সুন্দর বলেছ। Now let's test your real conversational speaking: "${challengePrompt}". Tap the mic and answer me in English!`;
+    }
+    return '';
+  }
+
+  // Attempt verbal introduction when step changes
   useEffect(() => {
     resetTranscript();
     setPhrasePassed(false);
     setPhraseAccuracy(null);
-
-    if (currentPhrase) {
-      const intro = `চলো এটা শিখি: "${currentPhrase.english}". মানে হলো: ${currentPhrase.bengali}. Listen carefully: "${currentPhrase.english}". Now repeat after me!`;
+    const intro = getStepIntro();
+    if (intro) {
       speak(intro);
-    } else if (isChallengeStep) {
-      const challengeIntro = `দারুণ! সবকটি বাক্য তুমি সুন্দর বলেছ। Now let's test your real conversational speaking: "${challengePrompt}". Tap the mic and answer me in English!`;
-      speak(challengeIntro);
     }
   }, [currentStepIndex]);
 
-  // Handle Phrase Speech Verification
+  // Handle Phrase Speech Verification (Repeating English phrase)
   async function handlePhraseMicToggle() {
+    unlockAudio();
     if (listening) {
       stopListening();
       if (!transcript.trim()) {
@@ -72,7 +74,7 @@ export default function LessonView({ lesson, onClose }) {
         return;
       }
 
-      // Check strict speech accuracy
+      // Check strict speech accuracy against target English phrase
       const result = evaluateSpokenAccuracy(currentPhrase.english, transcript);
       setPhraseAccuracy(result);
 
@@ -93,6 +95,7 @@ export default function LessonView({ lesson, onClose }) {
 
   // Handle Open Challenge Evaluation via Gemini AI
   async function handleChallengeMicToggle() {
+    unlockAudio();
     if (listening) {
       stopListening();
       if (!transcript.trim()) {
@@ -121,9 +124,9 @@ export default function LessonView({ lesson, onClose }) {
 
   // Advance to next step (ONLY allowed if passed!)
   function handleNext() {
+    unlockAudio();
     if (isChallengeStep) {
       if (!challengePassed) return;
-      // Mark lesson done and award real XP
       markLessonDone(lesson.id);
       completedLesson(lesson.xp);
       setCurrentStepIndex(totalSteps); // move to graduation celebration
@@ -174,7 +177,7 @@ export default function LessonView({ lesson, onClose }) {
 
           <button
             onClick={onClose}
-            className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-600/30 transition-all cursor-pointer"
+            className="w-full py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-sm shadow-lg shadow-brand-600/30 transition-all cursor-pointer active:scale-95"
           >
             Return to Syllabus 🚀
           </button>
@@ -191,7 +194,7 @@ export default function LessonView({ lesson, onClose }) {
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <button
-              onClick={onClose}
+              onClick={() => { stop(); onClose(); }}
               className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-[#161f2e] text-slate-400' : 'hover:bg-brand-100 text-slate-500'}`}
             >
               <X size={18} />
@@ -207,15 +210,24 @@ export default function LessonView({ lesson, onClose }) {
           </div>
 
           <button
-            onClick={() => speak(currentPhrase ? currentPhrase.english : challengePrompt)}
-            className={`p-2 rounded-xl transition-all cursor-pointer ${
+            onClick={() => {
+              unlockAudio();
+              if (speaking) {
+                stop();
+              } else {
+                const intro = getStepIntro();
+                if (intro) speak(intro);
+              }
+            }}
+            className={`px-3 py-1.5 rounded-xl flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer ${
               speaking
-                ? 'bg-brand-500 text-white animate-pulse'
-                : isDark ? 'bg-[#161f2e] text-slate-300' : 'bg-white text-slate-600 shadow-xs'
+                ? 'bg-red-500 text-white animate-pulse'
+                : isDark ? 'bg-brand-500/20 text-brand-300 border border-brand-500/40' : 'bg-brand-100 text-brand-700 border border-brand-300 shadow-xs'
             }`}
-            title="Hear Nova pronounce again"
+            title="Hear Nova speak"
           >
-            <Volume2 size={16} />
+            {speaking ? <Square size={13} className="fill-current" /> : <Volume2 size={14} />}
+            <span>{speaking ? 'Stop' : 'Listen'}</span>
           </button>
         </div>
 
@@ -241,19 +253,19 @@ export default function LessonView({ lesson, onClose }) {
             <div className="flex items-center gap-2 mb-1">
               <span className={`font-bold text-sm ${text()}`}>Nova</span>
               <span className="text-[10px] bg-brand-500/15 text-brand-400 font-semibold px-2 py-0.5 rounded-full">
-                Your Spoken Mentor
+                Your Bilingual Mentor
               </span>
               {speaking && (
                 <div className="flex items-center gap-0.5 ml-auto">
-                  <div className="wave-bar w-1 rounded-full bg-brand-500 h-3" />
-                  <div className="wave-bar w-1 rounded-full bg-brand-500 h-4" />
-                  <div className="wave-bar w-1 rounded-full bg-brand-500 h-2" />
+                  <div className="w-1 rounded-full bg-brand-500 h-3 animate-bounce" />
+                  <div className="w-1 rounded-full bg-brand-500 h-4 animate-bounce" style={{ animationDelay: '0.15s' }} />
+                  <div className="w-1 rounded-full bg-brand-500 h-2 animate-bounce" style={{ animationDelay: '0.3s' }} />
                 </div>
               )}
             </div>
             <p className={`text-xs sm:text-sm leading-relaxed ${sub()}`}>
               {currentPhrase
-                ? `আমার সাথে স্পষ্ট করে উচ্চারণ করো। তুমি যতক্ষণ না অন্তত ৭০% নির্ভুলভাবে বলতে পারবে, ততক্ষণ আমরা পরের ধাপে যাব না!`
+                ? `আমার সাথে স্পষ্ট করে ইংরেজি বাক্যটি বলো। অন্তত ৭০% নির্ভুল না হলে পরের ধাপে যাওয়া যাবে না!`
                 : `এবার বাস্তব পরিস্থিতিতে ইংরেজিতে উত্তর দেওয়ার পালা। চিন্তা না করে নিজের মতো করে বলো!`}
             </p>
           </div>
@@ -276,12 +288,15 @@ export default function LessonView({ lesson, onClose }) {
               </p>
 
               <button
-                onClick={() => speak(currentPhrase.english)}
+                onClick={() => {
+                  unlockAudio();
+                  speak(`Listen carefully: "${currentPhrase.english}". মানে হলো: ${currentPhrase.bengali}. Now say: "${currentPhrase.english}"`);
+                }}
                 className={`inline-flex items-center gap-1.5 mt-4 px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all ${
                   isDark ? 'bg-[#1e2d45] text-brand-300 hover:bg-[#253957]' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
                 }`}
               >
-                <Volume2 size={14} /> Listen to Pronunciation
+                <Volume2 size={14} /> Listen to Pronunciation (উচ্চারণ শুনুন)
               </button>
             </div>
 
@@ -307,7 +322,7 @@ export default function LessonView({ lesson, onClose }) {
               </div>
 
               <p className={`text-xs font-semibold ${text()}`}>
-                {listening ? 'Listening to your voice... tap to finish' : 'Tap the microphone and read the phrase aloud in English'}
+                {listening ? 'Listening to your voice... tap to finish' : 'Tap the mic and speak the phrase aloud in English'}
               </p>
 
               {transcript && (
