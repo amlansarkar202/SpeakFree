@@ -6,9 +6,8 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-// Split bilingual text into language segments
+// Split bilingual text into natural sentence-level language segments
 function splitBilingualText(text) {
-  // Strip emojis and markdown formatting from spoken text
   const clean = text
     .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
     .replace(/[*_~`#[\]()]/g, ' ')
@@ -16,19 +15,37 @@ function splitBilingualText(text) {
 
   if (!clean) return [];
 
-  // Match Bengali vs non-Bengali segments
   const segments = [];
-  const regex = /([\u0980-\u09FF\s,।!?]+)|([^\u0980-\u09FF]+)/g;
-  let match;
+  const sentences = clean.split(/(?<=[.!?।\n])\s+/);
 
-  while ((match = regex.exec(clean)) !== null) {
-    const chunk = match[0].trim();
-    if (!chunk) continue;
-    const isBengali = /[\u0980-\u09FF]/.test(chunk);
-    segments.push({
-      text: chunk,
-      lang: isBengali ? 'bn' : 'en',
-    });
+  for (const sent of sentences) {
+    const trimmed = sent.trim();
+    if (!trimmed) continue;
+
+    const hasBengali = /[\u0980-\u09FF]/.test(trimmed);
+    const hasEnglish = /[a-zA-Z]/.test(trimmed);
+
+    if (hasBengali && !hasEnglish) {
+      segments.push({ text: trimmed, lang: 'bn' });
+    } else if (!hasBengali && hasEnglish) {
+      segments.push({ text: trimmed, lang: 'en' });
+    } else {
+      // Mixed sentence: segment by words
+      const words = trimmed.split(/\s+/);
+      let curr = { text: '', lang: '' };
+      for (const w of words) {
+        const isBn = /[\u0980-\u09FF]/.test(w);
+        const lang = isBn ? 'bn' : 'en';
+        if (!curr.lang || curr.lang === lang) {
+          curr.text += (curr.text ? ' ' : '') + w;
+          curr.lang = lang;
+        } else {
+          segments.push(curr);
+          curr = { text: w, lang };
+        }
+      }
+      if (curr.text) segments.push(curr);
+    }
   }
 
   return segments.length > 0 ? segments : [{ text: clean, lang: 'en' }];
@@ -135,9 +152,9 @@ export function useTTS() {
     for (const segment of segments) {
       if (isCancelledRef.current) break;
 
-      // 1. Try Google Studio TTS audio first (natural, native female voices)
+      // 1. Play high-fidelity studio voice via /api/tts endpoint (supports fluent Bengali and English)
       const encoded = encodeURIComponent(segment.text.slice(0, 180));
-      const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&tl=${segment.lang}&client=tw-ob&q=${encoded}`;
+      const ttsUrl = `/api/tts?lang=${segment.lang}&text=${encoded}`;
 
       const audioSuccess = await playAudioUrl(ttsUrl);
 
