@@ -10,7 +10,7 @@ function StatCard({ icon: Icon, value, label, color, theme }) {
   return (
     <div className={`
       p-3 sm:p-4 rounded-2xl flex items-center gap-2.5 sm:gap-3 transition-all min-w-0
-      ${isDark ? 'bg-[#161f2e] border border-[#1e2d45]' : 'bg-white border border-[#c7d7f8] shadow-xs'}
+      ${isDark ? 'bg-[#191e28] border border-[#252d3a]' : 'bg-white border border-[#dbe0e8] shadow-xs'}
     `}>
       <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
         <Icon size={18} className="text-white" />
@@ -65,7 +65,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
       <div className="max-w-4xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
         {/* Greeting Banner */}
@@ -89,7 +89,7 @@ export default function HomePage() {
 
         {/* Nova Personal Mentor Calling Card */}
         <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all ${
-          isDark ? 'bg-[#161f2e] border-brand-500/30 shadow-lg shadow-brand-600/10' : 'bg-white border-brand-200 shadow-sm'
+          isDark ? 'bg-[#191e28] border-brand-500/30 shadow-lg shadow-brand-600/10' : 'bg-white border-brand-200 shadow-sm'
         }`}>
           <div className="flex items-start gap-3.5">
             <div className="relative shrink-0">
@@ -126,7 +126,7 @@ export default function HomePage() {
                   className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
                     speaking
                       ? 'bg-brand-500/20 text-brand-400 border-brand-500/40'
-                      : isDark ? 'border-[#1e2d45] hover:bg-[#1e2d45] text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                      : isDark ? 'border-[#252d3a] hover:bg-[#252d3a] text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
                   }`}
                 >
                   <Volume2 size={15} /> {speaking ? 'Speaking...' : "Hear Nova's Greeting"}
@@ -243,7 +243,7 @@ export default function HomePage() {
                   key={unit.id}
                   onClick={() => setActivePage('learn')}
                   className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer hover:border-brand-500/40
-                    ${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8] shadow-xs'}`}
+                    ${isDark ? 'bg-[#191e28] border-[#252d3a]' : 'bg-white border-[#dbe0e8] shadow-xs'}`}
                 >
                   <div className="text-2xl shrink-0">{unit.emoji}</div>
                   <div className="flex-1 min-w-0">
@@ -256,7 +256,7 @@ export default function HomePage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
-                      <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#1e2d45]' : 'bg-brand-100'}`}>
+                      <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#252d3a]' : 'bg-brand-100'}`}>
                         <div
                           className="h-full rounded-full bg-brand-500 transition-all duration-500"
                           style={{ width: `${pct}%` }}

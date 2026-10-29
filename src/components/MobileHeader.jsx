@@ -12,7 +12,7 @@ export default function MobileHeader() {
   return (
     <header className={`
       lg:hidden sticky top-0 z-40 flex items-center justify-between px-4 py-3 border-b backdrop-blur-md transition-colors
-      ${isDark ? 'bg-[#0f1623]/95 border-[#1e2d45]' : 'bg-[#f0f4ff]/95 border-[#c7d7f8]'}
+      ${isDark ? 'bg-[#13171e]/95 border-[#252d3a]' : 'bg-[#f4f5f8]/95 border-[#dbe0e8]'}
     `}>
       {/* Brand */}
       <div className="flex items-center gap-2.5">
@@ -33,7 +33,7 @@ export default function MobileHeader() {
       <div className="flex items-center gap-2">
         {/* Streak chip */}
         <div className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
-          isDark ? 'bg-[#161f2e] border border-[#1e2d45] text-accent-400' : 'bg-white border border-[#c7d7f8] text-accent-500 shadow-sm'
+          isDark ? 'bg-[#191e28] border border-[#252d3a] text-accent-400' : 'bg-white border border-[#dbe0e8] text-accent-500 shadow-sm'
         }`}>
           <Flame size={13} className="fill-accent-400" />
           <span>{todayProgress.streak}d</span>
@@ -45,8 +45,8 @@ export default function MobileHeader() {
           aria-label="Toggle theme"
           className={`p-2 rounded-xl border transition-all ${
             isDark
-              ? 'bg-[#161f2e] border-[#1e2d45] text-slate-300 hover:text-white'
-              : 'bg-white border-[#c7d7f8] text-slate-600 hover:text-slate-900 shadow-sm'
+              ? 'bg-[#191e28] border-[#252d3a] text-slate-300 hover:text-white'
+              : 'bg-white border-[#dbe0e8] text-slate-600 hover:text-slate-900 shadow-sm'
           }`}
         >
           {isDark ? <Sun size={15} className="text-warn-400" /> : <Moon size={15} className="text-brand-600" />}

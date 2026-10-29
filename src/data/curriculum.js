@@ -300,15 +300,15 @@ export const CURRICULUM = {
           xp: 25,
           content: {
             vocabulary: [
-              { word: 'Linking', meaning: 'শব্দ জুড়ে বলা', example: "'Pick it up' sounds like 'Pickit up'" },
-              { word: 'Reduction', meaning: 'সংক্ষেপ', example: "'Want to' → 'wanna', 'going to' → 'gonna'" },
-              { word: 'Stress', meaning: 'জোর', example: "I LOVE this (not 'I love THIS')" },
+              { word: 'Articulation', meaning: 'স্পষ্ট উচ্চারণ', example: "Pronounce each word cleanly and politely" },
+              { word: 'Polite Expression', meaning: 'ভদ্র প্রকাশভঙ্গি', example: "'I would like to' or 'I want to'" },
+              { word: 'Stress & Rhythm', meaning: 'সঠিক জোর ও ছন্দ', example: "'I want to learn' emphasizes your clear intent" },
             ],
             phrases: [
-              { english: "I wanna go there.", bengali: "আমি সেখানে যেতে চাই।" },
-              { english: "Gonna be great!", bengali: "দারুণ হবে!" },
+              { english: "I want to go there.", bengali: "আমি সেখানে যেতে চাই।" },
+              { english: "It is going to be wonderful!", bengali: "এটি অসাধারণ হতে চলেছে!" },
             ],
-            practicePrompt: "Shadow me: Say this 3 times getting faster — 'I'm gonna pick it up and put it away.' Focus on linking the words!",
+            practicePrompt: "Practice speaking clearly and politely: 'I would like to speak fluent and correct English every day.'",
           },
         },
       ],

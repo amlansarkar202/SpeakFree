@@ -55,10 +55,10 @@ export default function Onboarding() {
   const isDark = theme === 'dark';
 
   function bg(extra = '') {
-    return `${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'} ${extra}`;
+    return `${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'} ${extra}`;
   }
   function card(extra = '') {
-    return `${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8]'} border rounded-2xl ${extra}`;
+    return `${isDark ? 'bg-[#191e28] border-[#252d3a]' : 'bg-white border-[#dbe0e8]'} border rounded-2xl ${extra}`;
   }
   function text(extra = '') {
     return `${isDark ? 'text-white' : 'text-slate-800'} ${extra}`;
@@ -120,7 +120,7 @@ export default function Onboarding() {
                 ? 'w-6 bg-brand-500'
                 : i < step
                   ? 'w-3 bg-brand-400'
-                  : isDark ? 'w-3 bg-[#1e2d45]' : 'w-3 bg-brand-200'
+                  : isDark ? 'w-3 bg-[#252d3a]' : 'w-3 bg-brand-200'
             }`}
           />
         ))}
@@ -148,7 +148,7 @@ export default function Onboarding() {
                 { icon: '📈', t: 'Track Progress', s: 'আপনার উন্নতি দেখুন' },
                 { icon: '🆓', t: '100% Free', s: 'কোনো পেমেন্ট নেই, কখনো না' },
               ].map(({ icon, t, s }) => (
-                <div key={t} className={`p-3 rounded-xl ${isDark ? 'bg-[#1e2d45]/60' : 'bg-brand-50'}`}>
+                <div key={t} className={`p-3 rounded-xl ${isDark ? 'bg-[#252d3a]/60' : 'bg-brand-50'}`}>
                   <div className="text-2xl mb-1">{icon}</div>
                   <p className={`text-xs font-semibold ${text()}`}>{t}</p>
                   <p className={`text-[11px] ${sub()}`}>{s}</p>
@@ -173,7 +173,7 @@ export default function Onboarding() {
               onKeyDown={(e) => e.key === 'Enter' && canNext() && next()}
               className={`w-full px-4 py-3 rounded-xl border text-sm font-medium outline-none transition-all
                 ${isDark
-                  ? 'bg-[#1e2d45] border-[#2a3f5e] text-white placeholder-slate-500 focus:border-brand-500'
+                  ? 'bg-[#252d3a] border-[#2a3f5e] text-white placeholder-slate-500 focus:border-brand-500'
                   : 'bg-brand-50 border-brand-200 text-slate-800 placeholder-slate-400 focus:border-brand-500'}
                 focus:ring-2 focus:ring-brand-500/20`}
             />
@@ -200,7 +200,7 @@ export default function Onboarding() {
                     ${form.goal === g.id
                       ? 'border-brand-500 bg-brand-500/10 shadow-sm shadow-brand-500/20'
                       : isDark
-                        ? 'border-[#1e2d45] bg-[#1e2d45]/40 hover:border-brand-500/40'
+                        ? 'border-[#252d3a] bg-[#252d3a]/40 hover:border-brand-500/40'
                         : 'border-brand-100 bg-brand-50 hover:border-brand-300'}
                   `}
                 >
@@ -243,7 +243,7 @@ export default function Onboarding() {
                             ${selected
                               ? 'border-brand-500 bg-brand-500/15 text-brand-400 font-semibold shadow-xs'
                               : isDark
-                                ? 'border-[#1e2d45] bg-[#1e2d45]/40 text-slate-300 hover:border-brand-500/40'
+                                ? 'border-[#252d3a] bg-[#252d3a]/40 text-slate-300 hover:border-brand-500/40'
                                 : 'border-brand-100 bg-brand-50 text-slate-600 hover:border-brand-300'}
                           `}
                         >
@@ -282,7 +282,7 @@ export default function Onboarding() {
                     ${form.level === lv.id
                       ? 'border-brand-500 bg-brand-500/10 shadow-sm shadow-brand-500/20'
                       : isDark
-                        ? 'border-[#1e2d45] bg-[#1e2d45]/40 hover:border-brand-500/40'
+                        ? 'border-[#252d3a] bg-[#252d3a]/40 hover:border-brand-500/40'
                         : 'border-brand-100 bg-brand-50 hover:border-brand-300'}
                   `}
                 >
@@ -322,7 +322,7 @@ export default function Onboarding() {
                     ${form.timeline === t.id
                       ? 'border-brand-500 bg-brand-500/10 shadow-sm shadow-brand-500/20'
                       : isDark
-                        ? 'border-[#1e2d45] bg-[#1e2d45]/40 hover:border-brand-500/40'
+                        ? 'border-[#252d3a] bg-[#252d3a]/40 hover:border-brand-500/40'
                         : 'border-brand-100 bg-brand-50 hover:border-brand-300'}
                   `}
                 >
@@ -352,7 +352,7 @@ export default function Onboarding() {
             <p className={`text-sm mb-6 ${sub()}`}>
               You're all set! Your personalized English course is ready. Let's start your journey to fluency!
             </p>
-            <div className={`p-4 rounded-2xl mb-6 ${isDark ? 'bg-[#1e2d45]/60' : 'bg-brand-50'} text-left`}>
+            <div className={`p-4 rounded-2xl mb-6 ${isDark ? 'bg-[#252d3a]/60' : 'bg-brand-50'} text-left`}>
               {[
                 { label: 'Level', value: LEVELS.find((l) => l.id === form.level)?.label },
                 { label: 'Goal', value: LEARNING_GOALS.find((g) => g.id === form.goal)?.label },
@@ -374,7 +374,7 @@ export default function Onboarding() {
               onClick={back}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all
                 ${isDark
-                  ? 'bg-[#1e2d45] text-slate-300 hover:bg-[#2a3f5e]'
+                  ? 'bg-[#252d3a] text-slate-300 hover:bg-[#2a3f5e]'
                   : 'bg-brand-100 text-slate-600 hover:bg-brand-200'}`}
             >
               <ChevronLeft size={16} /> Back
@@ -388,7 +388,7 @@ export default function Onboarding() {
                 ${step === 0 ? 'w-full justify-center' : 'ml-auto'}
                 ${canNext()
                   ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/30'
-                  : isDark ? 'bg-[#1e2d45] text-slate-600 cursor-not-allowed' : 'bg-brand-100 text-slate-400 cursor-not-allowed'}
+                  : isDark ? 'bg-[#252d3a] text-slate-600 cursor-not-allowed' : 'bg-brand-100 text-slate-400 cursor-not-allowed'}
               `}
             >
               {step === 0 ? 'শুরু করুন (Get Started)' : 'Continue'} <ChevronRight size={16} />

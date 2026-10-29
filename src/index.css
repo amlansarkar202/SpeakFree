@@ -1,46 +1,49 @@
 @import "tailwindcss";
 
 @theme {
-  /* SpeakFree Brand Palette */
-  --color-brand-50: #eef6ff;
-  --color-brand-100: #d9eaff;
-  --color-brand-200: #bbdaff;
-  --color-brand-300: #8ec2ff;
-  --color-brand-400: #5ea0ff;
-  --color-brand-500: #3a7cf8;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4fd8;
-  --color-brand-800: #1e3fa8;
-  --color-brand-900: #1e3a84;
+  /* SpeakFree Calm / Muted Brand Palette (Dull, eye-friendly, mature tones) */
+  --color-brand-50: #f1f4f8;
+  --color-brand-100: #e2e7ef;
+  --color-brand-200: #c5d0de;
+  --color-brand-300: #a1b3c8;
+  --color-brand-400: #748fae;
+  --color-brand-500: #517195;
+  --color-brand-600: #3f5d80;
+  --color-brand-700: #324a68;
+  --color-brand-800: #273a52;
+  --color-brand-900: #1d2c3e;
 
-  --color-accent-400: #fb923c;
-  --color-accent-500: #f97316;
-  --color-accent-600: #ea6d0a;
+  /* Muted Terracotta Accent */
+  --color-accent-400: #c87a48;
+  --color-accent-500: #b86733;
+  --color-accent-600: #9e5225;
 
-  --color-success-400: #34d399;
-  --color-success-500: #10b981;
+  /* Muted Sage / Forest Success */
+  --color-success-400: #4f9a79;
+  --color-success-500: #3b8465;
 
-  --color-warn-400: #fbbf24;
-  --color-warn-500: #f59e0b;
+  /* Muted Warm Brass Warning */
+  --color-warn-400: #c9983b;
+  --color-warn-500: #b3832c;
 
-  /* Dark surface tokens */
-  --color-surface-dark: #0f1623;
-  --color-surface-card-dark: #161f2e;
-  --color-surface-sidebar-dark: #111827;
-  --color-surface-border-dark: #1e2d45;
+  /* Matte Dark surface tokens */
+  --color-surface-dark: #13171e;
+  --color-surface-card-dark: #191e28;
+  --color-surface-sidebar-dark: #151a23;
+  --color-surface-border-dark: #252d3a;
 
-  /* Light surface tokens */
-  --color-surface-light: #f0f4ff;
+  /* Softer, non-glare Light surface tokens */
+  --color-surface-light: #f4f5f8;
   --color-surface-card-light: #ffffff;
-  --color-surface-sidebar-light: #e8eeff;
-  --color-surface-border-light: #c7d7f8;
+  --color-surface-sidebar-light: #ebedf2;
+  --color-surface-border-light: #dbe0e8;
 }
 
 /* Custom scrollbar */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #3a7cf8; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+::-webkit-scrollbar-thumb { background: #517195; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #3f5d80; }
 
 /* Hide scrollbar for clean horizontal chip carousels */
 .no-scrollbar::-webkit-scrollbar { display: none; }

@@ -28,8 +28,8 @@ export default function Sidebar({ onNav }) {
     <aside className={`
       hidden lg:flex flex-col h-screen w-64 shrink-0 sticky top-0
       ${theme === 'dark'
-        ? 'bg-[#111827] border-r border-[#1e2d45]'
-        : 'bg-[#e8eeff] border-r border-[#c7d7f8]'}
+        ? 'bg-[#111827] border-r border-[#252d3a]'
+        : 'bg-[#e8eeff] border-r border-[#dbe0e8]'}
       transition-colors duration-200
     `}>
       {/* Brand */}
@@ -51,7 +51,7 @@ export default function Sidebar({ onNav }) {
 
       {/* User card */}
       {userProfile && (
-        <div className={`mx-3 mb-4 p-3 rounded-2xl ${theme === 'dark' ? 'bg-[#161f2e]' : 'bg-white/70'}`}>
+        <div className={`mx-3 mb-4 p-3 rounded-2xl ${theme === 'dark' ? 'bg-[#191e28]' : 'bg-white/70'}`}>
           <div className="flex items-center gap-2.5 mb-2.5">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center text-white font-bold text-sm shadow">
               {userProfile.name?.[0]?.toUpperCase() || 'U'}
@@ -75,7 +75,7 @@ export default function Sidebar({ onNav }) {
                 {todayProgress.xpEarned}/{todayProgress.xpGoal}
               </span>
             </div>
-            <div className={`h-1.5 rounded-full ${theme === 'dark' ? 'bg-[#1e2d45]' : 'bg-brand-100'}`}>
+            <div className={`h-1.5 rounded-full ${theme === 'dark' ? 'bg-[#252d3a]' : 'bg-brand-100'}`}>
               <div
                 className="h-1.5 rounded-full bg-gradient-to-r from-warn-400 to-accent-500 transition-all duration-700"
                 style={{ width: `${xpPct}%` }}
@@ -114,7 +114,7 @@ export default function Sidebar({ onNav }) {
       </nav>
 
       {/* Daily Goal widget */}
-      <div className={`mx-3 mb-3 p-3 rounded-2xl ${theme === 'dark' ? 'bg-[#161f2e]' : 'bg-white/70'}`}>
+      <div className={`mx-3 mb-3 p-3 rounded-2xl ${theme === 'dark' ? 'bg-[#191e28]' : 'bg-white/70'}`}>
         <div className="flex items-center gap-2 mb-2">
           <Target size={14} className="text-success-500" />
           <span className={`text-xs font-semibold ${theme === 'dark' ? 'text-white' : 'text-slate-700'}`}>
@@ -131,7 +131,7 @@ export default function Sidebar({ onNav }) {
               className={`h-1 flex-1 rounded-full transition-all ${
                 i < todayProgress.lessonsCompleted
                   ? 'bg-success-500'
-                  : theme === 'dark' ? 'bg-[#1e2d45]' : 'bg-brand-100'
+                  : theme === 'dark' ? 'bg-[#252d3a]' : 'bg-brand-100'
               }`}
             />
           ))}

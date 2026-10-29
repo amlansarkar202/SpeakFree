@@ -37,7 +37,7 @@ export default function LearnPage() {
   }
 
   return (
-    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
       <div className="max-w-4xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-5 sm:space-y-6">
 
         {/* Header */}
@@ -59,7 +59,7 @@ export default function LearnPage() {
             {/* Unit Header */}
             <div className="flex items-center gap-3">
               <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-xl shrink-0 ${
-                isDark ? 'bg-[#161f2e] border border-[#1e2d45]' : 'bg-white border border-[#c7d7f8] shadow-xs'
+                isDark ? 'bg-[#191e28] border border-[#252d3a]' : 'bg-white border border-[#dbe0e8] shadow-xs'
               }`}>
                 {unit.emoji}
               </div>
@@ -91,15 +91,15 @@ export default function LearnPage() {
                           ? 'bg-success-500/10 border-success-500/30'
                           : 'bg-success-50/80 border-success-200 shadow-xs'
                         : locked
-                          ? isDark ? 'bg-[#161f2e]/40 border-[#1e2d45]/40 opacity-40 cursor-not-allowed' : 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
+                          ? isDark ? 'bg-[#191e28]/40 border-[#252d3a]/40 opacity-40 cursor-not-allowed' : 'bg-gray-50 border-gray-200 opacity-50 cursor-not-allowed'
                           : isDark
-                            ? 'bg-[#161f2e] border-[#1e2d45] hover:border-brand-500/40 hover:scale-[1.005] active:scale-[0.99] cursor-pointer'
-                            : 'bg-white border-[#c7d7f8] hover:border-brand-300 shadow-xs hover:scale-[1.005] active:scale-[0.99] cursor-pointer'}
+                            ? 'bg-[#191e28] border-[#252d3a] hover:border-brand-500/40 hover:scale-[1.005] active:scale-[0.99] cursor-pointer'
+                            : 'bg-white border-[#dbe0e8] hover:border-brand-300 shadow-xs hover:scale-[1.005] active:scale-[0.99] cursor-pointer'}
                     `}
                   >
                     {/* Status / Type Icon */}
                     <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs
-                      ${done ? 'bg-success-500' : locked ? (isDark ? 'bg-[#1e2d45]' : 'bg-gray-200') : meta.color}
+                      ${done ? 'bg-success-500' : locked ? (isDark ? 'bg-[#252d3a]' : 'bg-gray-200') : meta.color}
                     `}>
                       {done
                         ? <CheckCircle2 size={18} className="text-white" />

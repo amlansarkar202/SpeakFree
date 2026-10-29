@@ -13,7 +13,7 @@ function Input({ icon: Icon, type = 'text', placeholder, value, onChange, right,
         ${error
           ? 'border-red-500/60 bg-red-500/5'
           : isDark
-            ? 'bg-[#1e2d45] border-[#2a3f5e] focus-within:border-brand-500'
+            ? 'bg-[#252d3a] border-[#2a3f5e] focus-within:border-brand-500'
             : 'bg-brand-50 border-brand-200 focus-within:border-brand-500'}
         focus-within:ring-2 focus-within:ring-brand-500/15
       `}>
@@ -148,8 +148,8 @@ export default function AuthPage({ onSkip }) {
     setLoading(false);
   }
 
-  function bg() { return isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'; }
-  function card(e = '') { return `${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8]'} border rounded-2xl ${e}`; }
+  function bg() { return isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'; }
+  function card(e = '') { return `${isDark ? 'bg-[#191e28] border-[#252d3a]' : 'bg-white border-[#dbe0e8]'} border rounded-2xl ${e}`; }
   function text(e = '') { return `${isDark ? 'text-white' : 'text-slate-800'} ${e}`; }
   function sub(e = '') { return `${isDark ? 'text-slate-400' : 'text-slate-500'} ${e}`; }
 
@@ -188,7 +188,7 @@ export default function AuthPage({ onSkip }) {
               <button
                 onClick={() => { setMode('login'); setGlobalError(''); }}
                 className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl border font-semibold text-sm transition-all cursor-pointer active:scale-98
-                  ${isDark ? 'border-[#1e2d45] bg-[#1e2d45]/50 text-white hover:border-brand-500/50' : 'border-brand-200 bg-brand-50 text-slate-700 hover:border-brand-400'}`}
+                  ${isDark ? 'border-[#252d3a] bg-[#252d3a]/50 text-white hover:border-brand-500/50' : 'border-brand-200 bg-brand-50 text-slate-700 hover:border-brand-400'}`}
               >
                 <User size={18} className="text-brand-500" />
                 <span className="flex-1 text-left">Sign In</span>
@@ -223,7 +223,7 @@ export default function AuthPage({ onSkip }) {
               <button
                 type="button"
                 onClick={() => { setMode('choice'); setErrors({}); setGlobalError(''); }}
-                className={`p-1.5 rounded-lg transition-all cursor-pointer ${isDark ? 'hover:bg-[#1e2d45] text-slate-400' : 'hover:bg-brand-100 text-slate-500'}`}
+                className={`p-1.5 rounded-lg transition-all cursor-pointer ${isDark ? 'hover:bg-[#252d3a] text-slate-400' : 'hover:bg-brand-100 text-slate-500'}`}
               >
                 <ChevronLeft size={18} />
               </button>

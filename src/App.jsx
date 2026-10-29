@@ -55,7 +55,7 @@ function AppContent() {
   // Show nothing while checking session (prevents flash)
   if (!authChecked) {
     return (
-      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
         <div className="w-10 h-10 rounded-2xl bg-brand-600 flex items-center justify-center animate-pulse">
           <span className="text-white font-bold text-xl">S</span>
         </div>
@@ -82,7 +82,7 @@ function AppContent() {
   };
 
   return (
-    <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+    <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         {activePage !== 'chat' && <MobileHeader />}

@@ -24,8 +24,8 @@ function Message({ msg, theme, onSpeak, onStop, isSpeaking }) {
           ${isUser
             ? 'bg-brand-600 text-white rounded-br-xs'
             : isDark
-              ? 'bg-[#161f2e] border border-[#1e2d45] text-slate-100 rounded-bl-xs'
-              : 'bg-white border border-[#c7d7f8] text-slate-800 rounded-bl-xs shadow-xs'}
+              ? 'bg-[#191e28] border border-[#252d3a] text-slate-100 rounded-bl-xs'
+              : 'bg-white border border-[#dbe0e8] text-slate-800 rounded-bl-xs shadow-xs'}
         `}
       >
         <div className="whitespace-pre-wrap">{msg.content}</div>
@@ -151,11 +151,11 @@ export default function ChatPage() {
   }
 
   return (
-    <div className={`flex-1 flex flex-col h-[calc(100dvh-60px)] lg:h-screen overflow-hidden ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+    <div className={`flex-1 flex flex-col h-[calc(100dvh-60px)] lg:h-screen overflow-hidden ${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
 
       {/* Top bar */}
       <div className={`flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 border-b shrink-0 z-10
-        ${isDark ? 'bg-[#0f1623]/95 border-[#1e2d45]' : 'bg-[#f0f4ff]/95 border-[#c7d7f8]'}
+        ${isDark ? 'bg-[#13171e]/95 border-[#252d3a]' : 'bg-[#f4f5f8]/95 border-[#dbe0e8]'}
         backdrop-blur-md`}>
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="relative shrink-0">
@@ -185,7 +185,7 @@ export default function ChatPage() {
             className={`p-2 rounded-xl transition-all cursor-pointer ${
               ttsOn
                 ? isDark ? 'bg-brand-500/15 text-brand-400' : 'bg-brand-100 text-brand-600'
-                : isDark ? 'text-slate-500 hover:bg-[#161f2e]' : 'text-slate-400 hover:bg-white'
+                : isDark ? 'text-slate-500 hover:bg-[#191e28]' : 'text-slate-400 hover:bg-white'
             }`}
           >
             {ttsOn ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -198,7 +198,7 @@ export default function ChatPage() {
               }
             }}
             title="Clear chat"
-            className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-[#161f2e] text-slate-400' : 'hover:bg-white text-slate-500'}`}
+            className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-[#191e28] text-slate-400' : 'hover:bg-white text-slate-500'}`}
           >
             <RefreshCw size={16} />
           </button>
@@ -224,7 +224,7 @@ export default function ChatPage() {
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white text-xs font-bold shrink-0">
               N
             </div>
-            <div className={`px-4 py-3 rounded-2xl rounded-bl-xs ${isDark ? 'bg-[#161f2e] border border-[#1e2d45]' : 'bg-white border border-[#c7d7f8]'}`}>
+            <div className={`px-4 py-3 rounded-2xl rounded-bl-xs ${isDark ? 'bg-[#191e28] border border-[#252d3a]' : 'bg-white border border-[#dbe0e8]'}`}>
               <div className="flex gap-1.5 items-center h-4">
                 {[0, 1, 2].map((i) => (
                   <div
@@ -256,7 +256,7 @@ export default function ChatPage() {
                 onClick={() => sendMessage(p)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium border shrink-0 transition-all cursor-pointer whitespace-nowrap
                   ${isDark
-                    ? 'border-[#1e2d45] bg-[#161f2e] text-slate-300 hover:border-brand-500/50 hover:text-brand-300'
+                    ? 'border-[#252d3a] bg-[#191e28] text-slate-300 hover:border-brand-500/50 hover:text-brand-300'
                     : 'border-brand-200 bg-white text-slate-600 hover:border-brand-400 hover:text-brand-700 shadow-xs'}
                 `}
               >
@@ -270,12 +270,12 @@ export default function ChatPage() {
       {/* Input Bar */}
       <div className={`
         px-3 sm:px-4 py-2.5 sm:py-3 border-t shrink-0 z-10
-        ${isDark ? 'bg-[#0f1623]/95 border-[#1e2d45]' : 'bg-[#f0f4ff]/95 border-[#c7d7f8]'}
+        ${isDark ? 'bg-[#13171e]/95 border-[#252d3a]' : 'bg-[#f4f5f8]/95 border-[#dbe0e8]'}
         backdrop-blur-md
       `}>
         {/* Live Transcript Bubble */}
         {listening && (
-          <div className={`mb-2 px-3 py-1.5 rounded-xl text-xs flex items-center justify-between gap-2 ${isDark ? 'bg-[#161f2e] text-slate-300 border border-[#1e2d45]' : 'bg-brand-50 text-slate-700 border border-brand-200'}`}>
+          <div className={`mb-2 px-3 py-1.5 rounded-xl text-xs flex items-center justify-between gap-2 ${isDark ? 'bg-[#191e28] text-slate-300 border border-[#252d3a]' : 'bg-brand-50 text-slate-700 border border-brand-200'}`}>
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
               <span className="truncate">{transcript || (micLang === 'bn' ? 'বাংলায় কথা বলুন...' : 'Speak now in English...')}</span>
@@ -298,8 +298,8 @@ export default function ChatPage() {
                   ? 'bg-brand-500/20 text-brand-300 border-brand-500/40'
                   : 'bg-brand-100 text-brand-700 border-brand-300'
                 : isDark
-                  ? 'bg-[#161f2e] text-slate-300 border-[#1e2d45]'
-                  : 'bg-white text-slate-600 border-[#c7d7f8]'}
+                  ? 'bg-[#191e28] text-slate-300 border-[#252d3a]'
+                  : 'bg-white text-slate-600 border-[#dbe0e8]'}
             `}
           >
             <Globe size={14} />
@@ -314,7 +314,7 @@ export default function ChatPage() {
               w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all cursor-pointer
               ${listening
                 ? 'bg-red-500 text-white shadow-lg shadow-red-500/30 animate-pulse'
-                : isDark ? 'bg-[#161f2e] text-slate-400 hover:text-brand-400 border border-[#1e2d45]' : 'bg-white text-slate-500 hover:text-brand-600 border border-[#c7d7f8] shadow-xs'}
+                : isDark ? 'bg-[#191e28] text-slate-400 hover:text-brand-400 border border-[#252d3a]' : 'bg-white text-slate-500 hover:text-brand-600 border border-[#dbe0e8] shadow-xs'}
             `}
           >
             {listening ? <MicOff size={18} /> : <Mic size={18} />}
@@ -322,7 +322,7 @@ export default function ChatPage() {
 
           {/* Text Input */}
           <div className={`flex-1 flex items-end rounded-xl border overflow-hidden min-h-[44px]
-            ${isDark ? 'bg-[#161f2e] border-[#1e2d45] focus-within:border-brand-500' : 'bg-white border-[#c7d7f8] focus-within:border-brand-500 shadow-xs'}
+            ${isDark ? 'bg-[#191e28] border-[#252d3a] focus-within:border-brand-500' : 'bg-white border-[#dbe0e8] focus-within:border-brand-500 shadow-xs'}
             transition-colors`}>
             <textarea
               ref={inputRef}
@@ -351,7 +351,7 @@ export default function ChatPage() {
             className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-all cursor-pointer
               ${input.trim() && !loading
                 ? 'bg-brand-600 text-white hover:bg-brand-700 shadow-md shadow-brand-600/30 active:scale-95'
-                : isDark ? 'bg-[#161f2e] text-slate-600 border border-[#1e2d45] cursor-not-allowed' : 'bg-white text-slate-300 border border-[#c7d7f8] cursor-not-allowed'}
+                : isDark ? 'bg-[#191e28] text-slate-600 border border-[#252d3a] cursor-not-allowed' : 'bg-white text-slate-300 border border-[#dbe0e8] cursor-not-allowed'}
             `}
           >
             <Send size={18} />

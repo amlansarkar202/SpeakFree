@@ -2,7 +2,7 @@ import { Flame, Zap, BookOpen, Trophy, BarChart2, TrendingUp, Target, Calendar }
 import useAppStore from '../store/useAppStore';
 import { getAllLessons, LEVELS } from '../data/curriculum';
 
-function Ring({ pct, size = 84, stroke = 8, color = '#3a7cf8', bg = '#1e2d45' }) {
+function Ring({ pct, size = 84, stroke = 8, color = '#3a7cf8', bg = '#252d3a' }) {
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const offset = circ - (pct / 100) * circ;
@@ -53,7 +53,7 @@ export default function ProgressPage() {
   }
 
   function card(extra = '') {
-    return `${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8] shadow-xs'} border rounded-2xl ${extra}`;
+    return `${isDark ? 'bg-[#191e28] border-[#252d3a]' : 'bg-white border-[#dbe0e8] shadow-xs'} border rounded-2xl ${extra}`;
   }
   function text(extra = '') { return `${isDark ? 'text-white' : 'text-slate-800'} ${extra}`; }
   function sub(extra = '') { return `${isDark ? 'text-slate-400' : 'text-slate-500'} ${extra}`; }
@@ -61,7 +61,7 @@ export default function ProgressPage() {
   const levelObj = LEVELS.find((l) => l.id === levelKey);
 
   return (
-    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
       <div className="max-w-4xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
         <div>
@@ -72,7 +72,7 @@ export default function ProgressPage() {
         {/* Level + Ring Card */}
         <div className={`${card('p-4 sm:p-5')} flex items-center gap-4 sm:gap-6`}>
           <div className="relative shrink-0">
-            <Ring pct={coursePct} size={84} stroke={8} color="#3a7cf8" bg={isDark ? '#1e2d45' : '#dbeafe'} />
+            <Ring pct={coursePct} size={84} stroke={8} color="#3a7cf8" bg={isDark ? '#252d3a' : '#dbeafe'} />
             <div className="absolute inset-0 flex items-center justify-center">
               <span className={`text-lg sm:text-xl font-black ${text()}`}>{coursePct}%</span>
             </div>
@@ -124,7 +124,7 @@ export default function ProgressPage() {
               {todayProgress.xpEarned} / {todayProgress.xpGoal} XP
             </p>
           </div>
-          <div className={`h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-[#1e2d45]' : 'bg-brand-100'}`}>
+          <div className={`h-2.5 rounded-full overflow-hidden ${isDark ? 'bg-[#252d3a]' : 'bg-brand-100'}`}>
             <div
               className="h-full rounded-full bg-gradient-to-r from-warn-400 to-accent-500 transition-all duration-700"
               style={{ width: `${xpPct}%` }}

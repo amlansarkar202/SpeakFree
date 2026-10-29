@@ -138,7 +138,7 @@ export default function LessonView({ lesson, onClose }) {
   }
 
   function card(extra = '') {
-    return `${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8] shadow-xs'} border rounded-2xl ${extra}`;
+    return `${isDark ? 'bg-[#191e28] border-[#252d3a]' : 'bg-white border-[#dbe0e8] shadow-xs'} border rounded-2xl ${extra}`;
   }
   function text(extra = '') { return `${isDark ? 'text-white' : 'text-slate-800'} ${extra}`; }
   function sub(extra = '') { return `${isDark ? 'text-slate-400' : 'text-slate-500'} ${extra}`; }
@@ -146,7 +146,7 @@ export default function LessonView({ lesson, onClose }) {
   // ── FINAL CELEBRATION & REAL XP SCREEN ─────────────────────────────────────
   if (isCompletedStep) {
     return (
-      <div className={`flex-1 min-h-[100dvh] flex flex-col items-center justify-center px-4 py-8 pb-28 lg:pb-12 ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+      <div className={`flex-1 min-h-[100dvh] flex flex-col items-center justify-center px-4 py-8 pb-28 lg:pb-12 ${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
         <div className={`w-full max-w-md ${card('p-6 sm:p-8')} text-center animate-float-up`}>
           <div className="w-20 h-20 mx-auto rounded-3xl bg-gradient-to-br from-warn-400 to-accent-500 flex items-center justify-center text-4xl shadow-xl shadow-warn-500/30 mb-4 animate-bounce">
             🏆
@@ -161,11 +161,11 @@ export default function LessonView({ lesson, onClose }) {
 
           {/* Genuine Verified Badges */}
           <div className="grid grid-cols-2 gap-3 mb-6">
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#1e2d45]' : 'bg-brand-50'}`}>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#252d3a]' : 'bg-brand-50'}`}>
               <p className="text-2xl font-black text-warn-400">+{lesson.xp}</p>
               <p className={`text-[11px] font-bold ${sub()}`}>Verified XP Earned</p>
             </div>
-            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#1e2d45]' : 'bg-brand-50'}`}>
+            <div className={`p-3 rounded-xl ${isDark ? 'bg-[#252d3a]' : 'bg-brand-50'}`}>
               <p className="text-2xl font-black text-success-400">Passed ✓</p>
               <p className={`text-[11px] font-bold ${sub()}`}>Speech Checked</p>
             </div>
@@ -187,7 +187,7 @@ export default function LessonView({ lesson, onClose }) {
   }
 
   return (
-    <div className={`flex-1 min-h-screen pb-28 lg:pb-12 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+    <div className={`flex-1 min-h-screen pb-28 lg:pb-12 transition-colors ${isDark ? 'bg-[#13171e]' : 'bg-[#f4f5f8]'}`}>
       <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-4">
 
         {/* Top Header with Progress Dots */}
@@ -195,7 +195,7 @@ export default function LessonView({ lesson, onClose }) {
           <div className="flex items-center gap-2">
             <button
               onClick={() => { stop(); onClose(); }}
-              className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-[#161f2e] text-slate-400' : 'hover:bg-brand-100 text-slate-500'}`}
+              className={`p-2 rounded-xl transition-all cursor-pointer ${isDark ? 'hover:bg-[#191e28] text-slate-400' : 'hover:bg-brand-100 text-slate-500'}`}
             >
               <X size={18} />
             </button>
@@ -293,7 +293,7 @@ export default function LessonView({ lesson, onClose }) {
                   speak(`Listen carefully: "${currentPhrase.english}". মানে হলো: ${currentPhrase.bengali}. Now say: "${currentPhrase.english}"`);
                 }}
                 className={`inline-flex items-center gap-1.5 mt-4 px-3.5 py-1.5 rounded-full text-xs font-semibold cursor-pointer transition-all ${
-                  isDark ? 'bg-[#1e2d45] text-brand-300 hover:bg-[#253957]' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
+                  isDark ? 'bg-[#252d3a] text-brand-300 hover:bg-[#253957]' : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
                 }`}
               >
                 <Volume2 size={14} /> Listen to Pronunciation (উচ্চারণ শুনুন)
@@ -327,7 +327,7 @@ export default function LessonView({ lesson, onClose }) {
 
               {transcript && (
                 <div className={`mt-3 p-3 rounded-xl text-left border ${
-                  isDark ? 'bg-[#1e2d45] border-[#2a3f5e]' : 'bg-brand-50 border-brand-200'
+                  isDark ? 'bg-[#252d3a] border-[#2a3f5e]' : 'bg-brand-50 border-brand-200'
                 }`}>
                   <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${sub()}`}>What you said:</p>
                   <p className={`text-xs sm:text-sm font-semibold ${text()}`}>"{transcript}"</p>
@@ -365,7 +365,7 @@ export default function LessonView({ lesson, onClose }) {
                 w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
                 ${phrasePassed
                   ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/30 cursor-pointer active:scale-98'
-                  : isDark ? 'bg-[#1e2d45] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                  : isDark ? 'bg-[#252d3a] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
               `}
             >
               <span>{phrasePassed ? 'Correct! Continue to Next Step' : '🔒 Speak phrase correctly (70%+ accuracy) to unlock'}</span>
@@ -423,7 +423,7 @@ export default function LessonView({ lesson, onClose }) {
 
               {transcript && (
                 <div className={`mt-3 p-3 rounded-xl text-left border ${
-                  isDark ? 'bg-[#1e2d45] border-[#2a3f5e]' : 'bg-brand-50 border-brand-200'
+                  isDark ? 'bg-[#252d3a] border-[#2a3f5e]' : 'bg-brand-50 border-brand-200'
                 }`}>
                   <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${sub()}`}>Your speech:</p>
                   <p className={`text-xs sm:text-sm font-semibold ${text()}`}>"{transcript}"</p>
@@ -483,7 +483,7 @@ export default function LessonView({ lesson, onClose }) {
                 w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
                 ${challengePassed
                   ? 'bg-success-500 hover:bg-success-600 text-white shadow-lg shadow-success-500/30 cursor-pointer active:scale-98'
-                  : isDark ? 'bg-[#1e2d45] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                  : isDark ? 'bg-[#252d3a] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
               `}
             >
               <Award size={16} />
