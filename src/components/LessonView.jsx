@@ -36,7 +36,17 @@ export default function LessonView({ lesson, onClose }) {
 
   const isChallengeStep = currentStepIndex === phrases.length;
   const isCompletedStep = currentStepIndex > phrases.length;
-  const currentPhrase = !isChallengeStep && !isCompletedStep ? phrases[currentStepIndex] : null;
+  const rawPhrase = !isChallengeStep && !isCompletedStep ? phrases[currentStepIndex] : null;
+
+  // Personalize introductory phrases dynamically with the learner's actual registered name
+  const learnerName = userProfile?.name && userProfile.name.trim() ? userProfile.name.trim() : 'Alex';
+  const currentPhrase = rawPhrase
+    ? {
+        ...rawPhrase,
+        english: rawPhrase.english.replace(/\b(Amlan|Alex)\b/gi, learnerName),
+        bengali: rawPhrase.bengali.replace(/(অম্লান|অ্যালেক্স)/gi, learnerName),
+      }
+    : null;
 
   // Stop audio on unmount
   useEffect(() => {

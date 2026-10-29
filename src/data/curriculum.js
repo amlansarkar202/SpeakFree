@@ -74,14 +74,14 @@ export const CURRICULUM = {
           xp: 15,
           content: {
             vocabulary: [
-              { word: 'Hello', meaning: 'হ্যালো / নমস্কার', example: 'Hello! My name is Amlan.' },
+              { word: 'Hello', meaning: 'হ্যালো / নমস্কার', example: 'Hello! Nice to meet you.' },
               { word: 'Good morning', meaning: 'শুভ সকাল', example: 'Good morning! How are you?' },
-              { word: 'Nice to meet you', meaning: 'আপনার সাথে দেখা করে ভালো লাগলো', example: "I'm Riya. Nice to meet you!" },
+              { word: 'Nice to meet you', meaning: 'আপনার সাথে দেখা করে ভালো লাগলো', example: "I am Riya. Nice to meet you!" },
               { word: 'How are you?', meaning: 'আপনি কেমন আছেন?', example: 'How are you today?' },
               { word: 'I am fine', meaning: 'আমি ভালো আছি', example: 'I am fine, thank you!' },
             ],
             phrases: [
-              { english: "Hello, my name is Amlan.", bengali: "হ্যালো, আমার নাম অম্লান।" },
+              { english: "Hello, my name is Alex.", bengali: "হ্যালো, আমার নাম অ্যালেক্স।" },
               { english: "I am from Kolkata, West Bengal.", bengali: "আমি কলকাতার বাসিন্দা।" },
               { english: "Nice to meet you!", bengali: "আপনার সাথে পরিচিত হতে পেরে ভালো লাগলো!" },
             ],

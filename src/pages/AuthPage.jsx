@@ -106,17 +106,18 @@ export default function AuthPage({ onSkip }) {
 
       if (data?.user) {
         setSuccess(true);
-        // Automatically initialize profile and log in
-        const profile = data.user.profile || {
-          name: data.user.displayName || data.user.username,
+        // Save the authenticated user in store
+        setSupabaseUser(data.user);
+        // Initialize userProfile with their entered name and ensure onboarding survey runs
+        const initialProfile = {
+          name: form.displayName || form.username,
           nativeLanguage: 'Bengali (বাংলা)',
           level: 'beginner',
-          learningGoal: 'Confident Daily English Speaking',
-          timeline: '30',
-          xpGoal: 50,
         };
-        setUserProfile(profile);
-        setSupabaseUser(data.user);
+        useAppStore.setState({
+          userProfile: initialProfile,
+          onboardingComplete: false,
+        });
       }
     } else {
       const { data, error } = await signIn({
@@ -132,17 +133,22 @@ export default function AuthPage({ onSkip }) {
 
       if (data?.user) {
         setSuccess(true);
-        // Restore existing user profile or initialize clean
-        const profile = data.user.profile || {
-          name: data.user.displayName || data.user.username,
-          nativeLanguage: 'Bengali (বাংলা)',
-          level: 'beginner',
-          learningGoal: 'Confident Daily English Speaking',
-          timeline: '30',
-          xpGoal: 50,
-        };
-        setUserProfile(profile);
         setSupabaseUser(data.user);
+        const profile = data.user.profile;
+        // If user already completed onboarding previously, restore full state
+        if (profile && (profile.level || profile.goal || profile.timeline)) {
+          setUserProfile(profile);
+        } else {
+          // If onboarding wasn't completed yet, guide them to complete it
+          useAppStore.setState({
+            userProfile: profile || {
+              name: data.user.displayName || data.user.username,
+              nativeLanguage: 'Bengali (বাংলা)',
+              level: 'beginner',
+            },
+            onboardingComplete: false,
+          });
+        }
       }
     }
     setLoading(false);
@@ -235,7 +241,7 @@ export default function AuthPage({ onSkip }) {
             <div className="space-y-3 mb-4">
               <Input
                 icon={AtSign}
-                placeholder="Username (e.g. amlan_123)"
+                placeholder="Username (e.g. rahul_123)"
                 value={form.username}
                 onChange={f('username')}
                 error={errors.username}
@@ -244,7 +250,7 @@ export default function AuthPage({ onSkip }) {
               {mode === 'signup' && (
                 <Input
                   icon={User}
-                  placeholder="Your Name (e.g. Amlan)"
+                  placeholder="Your Name (e.g. Rahul)"
                   value={form.displayName}
                   onChange={f('displayName')}
                   error={errors.displayName}

@@ -1,28 +1,49 @@
-// SpeakFree Universal Cloud Account Engine
-// Enables free, cross-device username + password accounts across mobile, tablet, and desktop
+// SpeakFree Universal Multi-Replica Cloud Account Engine
+// Triple-replica cloud persistence for 100% cross-device sync reliability
 
-const MASTER_STORE_ID = 'ff808181a09d98f701a188da530a561b';
-const REST_URL = `https://api.restful-api.dev/objects/${MASTER_STORE_ID}`;
+const REPLICA_STORES = [
+  'https://api.restful-api.dev/objects/ff808181a09d98f701a188da530a561b',
+  'https://api.restful-api.dev/objects/ff808181a09d98f701a1893a56f2573a',
+  'https://api.restful-api.dev/objects/ff808181a09d98f701a1893bf41b573c',
+];
 
-// In-memory cache for fast lambdas
+// In-memory cache for fast hot lambdas
 let memoryAccounts = null;
 let lastFetch = 0;
 
 async function fetchCloudAccounts() {
   const now = Date.now();
-  if (memoryAccounts && now - lastFetch < 5000) {
+  if (memoryAccounts && Object.keys(memoryAccounts).length > 0 && now - lastFetch < 3000) {
     return memoryAccounts;
   }
-  try {
-    const res = await fetch(REST_URL);
-    if (res.ok) {
-      const doc = await res.json();
-      memoryAccounts = doc?.data?.accounts || {};
-      lastFetch = now;
-      return memoryAccounts;
+
+  const merged = { ...(memoryAccounts || {}) };
+  let anySuccess = false;
+
+  const fetchPromises = REPLICA_STORES.map(async (url) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3500);
+    try {
+      const res = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) {
+        const doc = await res.json();
+        const accs = doc?.data?.accounts;
+        if (accs && typeof accs === 'object') {
+          anySuccess = true;
+          Object.assign(merged, accs);
+        }
+      }
+    } catch (err) {
+      clearTimeout(timeout);
     }
-  } catch (err) {
-    console.error('Failed to fetch cloud accounts:', err);
+  });
+
+  await Promise.all(fetchPromises);
+
+  if (anySuccess || Object.keys(merged).length > 0) {
+    memoryAccounts = merged;
+    lastFetch = now;
   }
   return memoryAccounts || {};
 }
@@ -30,36 +51,81 @@ async function fetchCloudAccounts() {
 async function saveCloudAccounts(accounts) {
   memoryAccounts = accounts;
   lastFetch = Date.now();
-  try {
-    await fetch(REST_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: 'speakfree_accounts_store_v1',
-        data: { accounts },
-      }),
-    });
-  } catch (err) {
-    console.error('Failed to save cloud accounts:', err);
-  }
+
+  const bodyStr = JSON.stringify({
+    name: 'speakfree_accounts_store_v1',
+    data: { accounts },
+  });
+
+  const savePromises = REPLICA_STORES.map(async (url) => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    try {
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: bodyStr,
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      return res.ok;
+    } catch (err) {
+      clearTimeout(timeout);
+      return false;
+    }
+  });
+
+  const results = await Promise.all(savePromises);
+  const successCount = results.filter(Boolean).length;
+  return successCount > 0;
 }
 
 function cleanUsername(u) {
   return (u || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
 }
 
+async function parseBody(req) {
+  if (req.body && typeof req.body === 'object') return req.body;
+  if (req.body && typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return {};
+    }
+  }
+
+  return new Promise((resolve) => {
+    let raw = '';
+    req.on?.('data', (c) => {
+      raw += c;
+    });
+    req.on?.('end', () => {
+      try {
+        resolve(raw ? JSON.parse(raw) : {});
+      } catch {
+        resolve({});
+      }
+    });
+    req.on?.('error', () => resolve({}));
+    if (!req.on) resolve({});
+  });
+}
+
 export default async function handler(req, res) {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Cache-Control', 'no-store, max-age=0');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
 
   const action = req.query?.action || new URL(req.url, 'http://localhost').searchParams.get('action');
 
   try {
-    let body = {};
-    if (req.body) {
-      body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    }
-
+    const body = await parseBody(req);
     const accounts = await fetchCloudAccounts();
 
     // ── SIGN UP ─────────────────────────────────────────────────────────────
@@ -76,7 +142,7 @@ export default async function handler(req, res) {
       }
 
       if (accounts[username]) {
-        return res.status(409).json({ error: 'This username is already taken. Try another!' });
+        return res.status(409).json({ error: `The username '@${username}' is already taken. Please choose another.` });
       }
 
       const defaultProfile = {
@@ -102,9 +168,11 @@ export default async function handler(req, res) {
       };
 
       accounts[username] = newUser;
-      await saveCloudAccounts(accounts);
+      const saved = await saveCloudAccounts(accounts);
+      if (!saved) {
+        return res.status(503).json({ error: 'Cloud storage temporarily busy. Please try again.' });
+      }
 
-      // Don't leak raw password in response
       const safeUser = { ...newUser };
       delete safeUser.password;
       return res.status(200).json({ user: safeUser, session: { user: safeUser } });
@@ -121,7 +189,7 @@ export default async function handler(req, res) {
 
       const user = accounts[username];
       if (!user) {
-        return res.status(404).json({ error: `Account '@${username}' not found. Please check your spelling or sign up below.` });
+        return res.status(404).json({ error: `Account '@${username}' not found. Please verify spelling or create an account.` });
       }
 
       if (user.password !== password) {
@@ -137,12 +205,22 @@ export default async function handler(req, res) {
     if (action === 'sync') {
       const username = cleanUsername(body.username);
       if (username && accounts[username]) {
-        if (body.profile) accounts[username].profile = { ...accounts[username].profile, ...body.profile };
-        if (body.progress) accounts[username].progress = body.progress;
+        if (body.profile) {
+          accounts[username].profile = { ...accounts[username].profile, ...body.profile };
+          if (body.profile.name) {
+            accounts[username].displayName = body.profile.name;
+            if (accounts[username].user_metadata) {
+              accounts[username].user_metadata.display_name = body.profile.name;
+            }
+          }
+        }
+        if (body.progress) {
+          accounts[username].progress = { ...(accounts[username].progress || {}), ...body.progress };
+        }
         await saveCloudAccounts(accounts);
         return res.status(200).json({ success: true });
       }
-      return res.status(404).json({ error: 'User not found' });
+      return res.status(404).json({ error: 'User not found for sync' });
     }
 
     return res.status(400).json({ error: 'Invalid action parameter' });

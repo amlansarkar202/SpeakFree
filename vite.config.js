@@ -128,6 +128,9 @@ function authDevPlugin() {
               res.setHeader('Content-Type', 'application/json');
               res.end(JSON.stringify(data));
             },
+            end(data) {
+              res.end(data);
+            },
           };
           try {
             await authHandler(req, mockRes);

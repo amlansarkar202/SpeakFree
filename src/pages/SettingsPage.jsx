@@ -44,6 +44,7 @@ export default function SettingsPage() {
     if (window.confirm('Sign out of your account?')) {
       await signOut();
       clearSupabaseUser();
+      resetOnboarding();
       window.location.reload();
     }
   }

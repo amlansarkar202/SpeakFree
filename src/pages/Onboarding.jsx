@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ChevronRight, ChevronLeft, Check, Mic, BookOpen, Target, Clock, Sparkles } from 'lucide-react';
 import useAppStore from '../store/useAppStore';
 import { LEARNING_GOALS, LEVELS, TIMELINES } from '../data/curriculum';
+import { updateProfile } from '../services/authService';
 
 const STEPS = ['welcome', 'name', 'goal', 'assessment', 'level', 'timeline', 'ready'];
 
@@ -9,7 +10,8 @@ export default function Onboarding() {
   const setUserProfile = useAppStore((s) => s.setUserProfile);
   const theme = useAppStore((s) => s.theme);
   const supabaseUser = useAppStore((s) => s.supabaseUser);
-  const initialName = supabaseUser?.user_metadata?.display_name || supabaseUser?.displayName || '';
+  const userProfile = useAppStore((s) => s.userProfile);
+  const initialName = supabaseUser?.user_metadata?.display_name || supabaseUser?.displayName || userProfile?.name || '';
 
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
@@ -89,11 +91,15 @@ export default function Onboarding() {
 
   function finish() {
     const xpGoal = LEVELS.find((l) => l.id === form.level)?.xpGoal || 40;
-    setUserProfile({
+    const finalProfile = {
       ...form,
       nativeLanguage: 'Bengali (বাংলা)',
       xpGoal,
-    });
+    };
+    setUserProfile(finalProfile);
+    if (supabaseUser?.id) {
+      updateProfile(supabaseUser.id, finalProfile);
+    }
   }
 
   function canNext() {
