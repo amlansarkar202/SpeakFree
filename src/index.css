@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+@theme {
+  /* SpeakFree Brand Palette */
+  --color-brand-50: #eef6ff;
+  --color-brand-100: #d9eaff;
+  --color-brand-200: #bbdaff;
+  --color-brand-300: #8ec2ff;
+  --color-brand-400: #5ea0ff;
+  --color-brand-500: #3a7cf8;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4fd8;
+  --color-brand-800: #1e3fa8;
+  --color-brand-900: #1e3a84;
+
+  --color-accent-400: #fb923c;
+  --color-accent-500: #f97316;
+  --color-accent-600: #ea6d0a;
+
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+
+  --color-warn-400: #fbbf24;
+  --color-warn-500: #f59e0b;
+
+  /* Dark surface tokens */
+  --color-surface-dark: #0f1623;
+  --color-surface-card-dark: #161f2e;
+  --color-surface-sidebar-dark: #111827;
+  --color-surface-border-dark: #1e2d45;
+
+  /* Light surface tokens */
+  --color-surface-light: #f0f4ff;
+  --color-surface-card-light: #ffffff;
+  --color-surface-sidebar-light: #e8eeff;
+  --color-surface-border-light: #c7d7f8;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #3a7cf8; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #2563eb; }
+
+/* Smooth transitions for theme switching */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+/* Prevent transition on icons/animated elements */
+svg, button svg { transition: none; }
+
+/* Pulse animation for recording */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.8); opacity: 0.8; }
+  70%  { transform: scale(1.4); opacity: 0; }
+  100% { transform: scale(0.8); opacity: 0; }
+}
+
+@keyframes float-up {
+  0%   { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.4); }
+  50%       { transform: scaleY(1); }
+}
+
+.animate-pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite; }
+.animate-float-up   { animation: float-up 0.35s ease forwards; }
+
+.wave-bar { animation: wave 1.2s ease-in-out infinite; }
+.wave-bar:nth-child(2) { animation-delay: 0.15s; }
+.wave-bar:nth-child(3) { animation-delay: 0.3s; }
+.wave-bar:nth-child(4) { animation-delay: 0.45s; }
+.wave-bar:nth-child(5) { animation-delay: 0.6s; }
+
+/* Glass morphism card */
+.glass {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
