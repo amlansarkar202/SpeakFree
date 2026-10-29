@@ -93,7 +93,7 @@ export default function LessonView({ lesson, onClose }) {
     } else {
       setPhrasePassed(false);
       const missingWords = result.missing.length > 0 ? result.missing.slice(0, 2).join(', ') : 'clarity';
-      speak(`Good attempt! You achieved ${result.score}%. Remember to pronounce "${missingWords}". Listen to me again and try once more!`);
+      speak(`চেষ্টা ভালো হয়েছে! You achieved ${result.score}%. Remember to pronounce "${missingWords}". Listen to me again and try once more!`);
     }
   }
 
@@ -121,7 +121,7 @@ export default function LessonView({ lesson, onClose }) {
   async function verifyChallenge(textToVerify) {
     const spoken = (textToVerify !== undefined ? textToVerify : transcript || '').trim();
     if (!spoken) {
-      speak('Please speak your answer into the microphone so I can evaluate your English!');
+      speak('মাইক টিপে ইংরেজিতে উত্তর বলো: Please speak your answer into the microphone!');
       return;
     }
 
@@ -135,7 +135,7 @@ export default function LessonView({ lesson, onClose }) {
       speak(evalResult.spokenFeedback || 'অসাধারণ! You spoke naturally and clearly. You passed the challenge!');
     } else {
       setChallengePassed(false);
-      speak(evalResult.spokenFeedback || 'Good try! Listen to my suggestion and try saying your answer once more.');
+      speak(evalResult.spokenFeedback || 'সুন্দর চেষ্টা! Listen to my suggestion and try saying your answer once more.');
     }
   }
 
@@ -165,7 +165,7 @@ export default function LessonView({ lesson, onClose }) {
       markLessonDone(lesson.id);
       completedLesson(lesson.xp);
       setCurrentStepIndex(totalSteps); // move to graduation celebration
-      speak(`Congratulations ${userProfile?.name || 'বন্ধু'}! You completed ${lesson.title} and earned ${lesson.xp} XP! I am so proud of your progress today!`);
+      speak(`অভিনন্দন ${userProfile?.name || 'বন্ধু'}! You completed ${lesson.title} and earned ${lesson.xp} XP! I am so proud of your progress today!`);
     } else {
       setCurrentStepIndex((prev) => prev + 1);
     }

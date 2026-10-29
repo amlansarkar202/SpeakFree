@@ -150,11 +150,19 @@ export function useTTS() {
         let blobUrl = audioBlobCache.get(cleanText);
 
         if (!blobUrl) {
-          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 480))}`;
+          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 1000))}`;
           const res = await fetch(ttsUrl);
           if (!res.ok) throw new Error(`TTS server returned status ${res.status}`);
           const blob = await res.blob();
           blobUrl = URL.createObjectURL(blob);
+
+          if (audioBlobCache.size > 100) {
+            const firstKey = audioBlobCache.keys().next().value;
+            try {
+              URL.revokeObjectURL(audioBlobCache.get(firstKey));
+            } catch {}
+            audioBlobCache.delete(firstKey);
+          }
           audioBlobCache.set(cleanText, blobUrl);
         }
 
