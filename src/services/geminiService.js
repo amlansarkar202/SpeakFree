@@ -13,10 +13,19 @@ function getDefaultKey() {
 }
 
 function getApiKey() {
-  const key =
-    localStorage.getItem('VITE_GEMINI_API_KEY') ||
-    import.meta.env.VITE_GEMINI_API_KEY ||
-    getDefaultKey();
+  let localKey = null;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localKey = localStorage.getItem('VITE_GEMINI_API_KEY');
+    }
+  } catch {}
+
+  const envKey =
+    typeof import.meta !== 'undefined' && import.meta.env
+      ? import.meta.env.VITE_GEMINI_API_KEY
+      : null;
+
+  const key = localKey || envKey || getDefaultKey();
   if (!key || key.includes('paste_') || key.includes('your_gemini')) {
     return getDefaultKey();
   }
@@ -53,30 +62,62 @@ function buildSystemPrompt(userProfile) {
   return `You are "Nova", a patient, warm, and highly skilled female English teacher who specializes in helping native Bengali speakers become fluent and confident in English.
 
 Learner Profile:
-- Name: ${name || 'বন্ধু'}
+- Name: ${name || 'Learner'}
 - Native Language: ${nativeLanguage || 'Bengali (বাংলা)'}
 - English Grip/Level: ${level || 'Beginner'}
 - Learning Goal: ${learningGoal || 'Confident Daily English Speaking'}
 
 Your Persona & Mentorship Guidelines:
 1. Speak as a real, living female mentor — warm, caring, encouraging, and natural. NEVER sound like a generic robotic AI or an impersonal bot.
-2. Bilingual Fluency (বাংলা + English):
+2. Direct Responsiveness:
+   - Always respond DIRECTLY and ACCURATELY to whatever the user asks, says, or types. Answer their exact questions.
+   - If they ask for grammar help, a translation, vocabulary, an interview practice, or casual talk, address it immediately and thoroughly.
+3. Bilingual Fluency (বাংলা + English):
    - When the learner asks or speaks to you in Bengali or broken English, respond in fluent, warm Bengali first to make them feel comfortable and understood.
    - Immediately teach the clean, natural English sentence for their thought.
    - Provide pronunciation phonetically in Bengali script when helpful (e.g. "confidence [কনফিডেন্স]", "introduce [ইনট্রো-ডিউস]").
    - Always encourage them to repeat after you in English!
-3. Honest & Constructive Corrections:
+4. Honest & Constructive Corrections:
    - When they make grammar, tense, or pronunciation mistakes, gently but clearly correct them:
      "You said: '[mistake]', but naturally we say: '[correct sentence]'."
      Explain the reason in simple Bengali.
    - Never give unearned praise for broken sentences; guide them to speak it properly!
-4. Spoken Voice Optimization:
+5. Spoken Voice Optimization:
    - Your messages will be spoken aloud to the student! Keep responses conversational, rhythmic, and natural (2 to 4 sentences).
    - Avoid long bulleted lists, markdown tables, or essays. Talk like you are sitting together in a private 1-on-1 tutoring session.
-5. Strict Standard & Professional English (NO Slang or Street Reductions):
+6. Strict Standard & Professional English (NO Slang or Street Reductions):
    - Always teach proper, polite, grammatically correct standard English (e.g., "want to", "going to", "would like to", "could you please").
    - NEVER teach or encourage informal slang reductions like "wanna", "gonna", "gotta", "lemme", or street colloquialisms.
    - If the learner uses "wanna" or "gonna", gently guide them to say "want to" or "going to", explaining in Bengali that standard, formal English is essential for jobs, interviews, and respectful communication.`;
+}
+
+/**
+ * Clean and structure conversation history so Google Gemini receives strictly alternating turns
+ * Rule: Must start with 'user', alternate 'user' -> 'model', and end with 'model'
+ */
+function cleanHistory(rawHistory) {
+  if (!Array.isArray(rawHistory) || rawHistory.length === 0) return [];
+
+  const turns = [];
+  let expectedRole = 'user';
+
+  for (const m of rawHistory) {
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    const role = m.role === 'assistant' ? 'model' : 'user';
+
+    if (role === expectedRole && m.content && m.content.trim()) {
+      turns.push({ role, parts: [{ text: m.content.trim() }] });
+      expectedRole = expectedRole === 'user' ? 'model' : 'user';
+    }
+  }
+
+  // History for startChat must end with 'model' because sendMessage sends the next 'user' message
+  if (turns.length > 0 && turns[turns.length - 1].role === 'user') {
+    turns.pop();
+  }
+
+  // Keep last 6 alternating turns (3 pairs)
+  return turns.slice(-6);
 }
 
 /**
@@ -90,19 +131,13 @@ export async function sendToGemini(userMessage, chatHistory = [], userProfile = 
       return getFallbackResponse(userMessage, userProfile);
     }
 
-    const history = chatHistory
-      .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-      .slice(-8)
-      .map((msg) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
-      }));
+    const history = cleanHistory(chatHistory);
 
     const chat = m.startChat({
       history,
       generationConfig: {
-        maxOutputTokens: 320,
-        temperature: 0.8,
+        maxOutputTokens: 380,
+        temperature: 0.7,
       },
     });
 
@@ -110,6 +145,18 @@ export async function sendToGemini(userMessage, chatHistory = [], userProfile = 
     return result.response.text().trim();
   } catch (err) {
     console.error('Nova AI chat error:', err);
+    // If multi-turn history failed for any reason, retry with fresh single turn
+    try {
+      const systemPrompt = buildSystemPrompt(userProfile);
+      const m = getModel(systemPrompt);
+      if (m) {
+        const singleChat = m.startChat({});
+        const retryResult = await singleChat.sendMessage(userMessage);
+        return retryResult.response.text().trim();
+      }
+    } catch (retryErr) {
+      console.error('Nova single-turn retry error:', retryErr);
+    }
     return getFallbackResponse(userMessage, userProfile);
   }
 }
@@ -169,18 +216,11 @@ Return strictly valid JSON:
 }
 
 /**
- * Nova's offline fallback responses with authentic Bengali-English mentoring
+ * Nova's intelligent fallback if network is completely down
  */
 function getFallbackResponse(message, userProfile) {
   const name = userProfile?.name || 'বন্ধু';
-  const responses = [
-    `দারুণ প্রশ্ন, ${name}! ইংরেজিতে কথা বলার সময় ভুল হওয়া একদম স্বাভাবিক। সব সময় মনে রাখবে: "Practice makes a person confident."\n\nআমার সাথে বলো: "I am ready to learn!"`,
-    `Very good attempt! তুমি যদি বলতে চাও "আমি বুঝতে পেরেছি", তাহলে বলবে: "I got it" অথবা "I understand". এখন আমার সাথে বলো: "I got it!" 😊`,
-    `অসাধারণ চেষ্টা! লজ্জা বা ভয় দূরে সরিয়ে দিয়ে প্রতিদিন জোরে জোরে কথা বলো। বলুন তো: "I can speak English confidently!" 💪`,
-    `খুব সুন্দর কথা! যখন কারো সাথে দেখা হবে, সহজে বলবে: "Hello! It's great to see you." উচ্চারণ করবে: [হ্যাল্লো! ইটস গ্রেট টু সি ইউ].`,
-    `ভুল করতে ভয় পাবে না! আগে কথা বলা শুরু করো, তারপর গতি ও স্পষ্ট ভাব নিজেই চলে আসবে। You are doing fantastic! 🌟`,
-  ];
-  return responses[Math.floor(Math.random() * responses.length)];
+  return `নমস্কার ${name}! আমি আপনার কথাটি বুঝতে পেরেছি। সাময়িক ইন্টারনেট সমস্যার কারণে বিস্তারিত উত্তর দিতে এক মুহূর্ত দেরি হচ্ছে। দয়া করে আরেকবার বলুন বা লিখুন! 😊`;
 }
 
 export function hasLiveAi() {
@@ -188,9 +228,12 @@ export function hasLiveAi() {
 }
 
 export function setGeminiKey(key) {
-  if (key) {
-    localStorage.setItem('VITE_GEMINI_API_KEY', key.trim());
-  } else {
-    localStorage.removeItem('VITE_GEMINI_API_KEY');
-  }
+  try {
+    if (typeof localStorage === 'undefined') return;
+    if (key) {
+      localStorage.setItem('VITE_GEMINI_API_KEY', key.trim());
+    } else {
+      localStorage.removeItem('VITE_GEMINI_API_KEY');
+    }
+  } catch {}
 }
