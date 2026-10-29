@@ -86,6 +86,7 @@ const useAppStore = create(
       name: 'speakfree-store',
       partialize: (s) => ({
         theme: s.theme,
+        supabaseUser: s.supabaseUser,
         onboardingComplete: s.onboardingComplete,
         userProfile: s.userProfile,
         todayProgress: s.todayProgress,

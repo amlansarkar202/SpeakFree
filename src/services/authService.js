@@ -1,27 +1,15 @@
-import { createClient } from '@supabase/supabase-js';
+// SpeakFree High-Reliability Dual-Layer Auth Engine (Cloud + Local Cache)
+// Allows instant username + password signup & signin that syncs across devices
 
-const SUPABASE_URL  = import.meta.env.VITE_SUPABASE_URL  || '';
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON || '';
-
-// Check if a real Supabase instance is configured (not dummy template string)
-const isRealSupabase =
-  Boolean(SUPABASE_URL &&
-  SUPABASE_ANON &&
-  !SUPABASE_URL.includes('your-project') &&
-  !SUPABASE_ANON.includes('your_supabase_anon_key'));
-
-export const supabase = isRealSupabase
-  ? createClient(SUPABASE_URL, SUPABASE_ANON)
-  : null;
-
-function toEmail(username) {
-  return `${username.toLowerCase().trim()}@speakfree.app`;
-}
-
-// ── LOCAL STORAGE AUTH FALLBACK ──────────────────────────────────────────
-// Allows instant username + password accounts without requiring a cloud DB setup
 const LOCAL_USERS_KEY = 'speakfree_local_accounts';
 const LOCAL_SESSION_KEY = 'speakfree_active_session';
+
+export function cleanUsername(username) {
+  return (username || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_]/g, '');
+}
 
 function getLocalAccounts() {
   try {
@@ -32,63 +20,81 @@ function getLocalAccounts() {
 }
 
 function saveLocalAccounts(accounts) {
-  localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(accounts));
+  try {
+    localStorage.setItem(LOCAL_USERS_KEY, JSON.stringify(accounts));
+  } catch {}
 }
 
 // ── SIGN UP ────────────────────────────────────────────────────────────────
 export async function signUp({ username, password, displayName }) {
-  const clean = username.toLowerCase().replace(/[^a-z0-9_]/g, '');
+  const clean = cleanUsername(username);
+  const pass = (password || '').trim();
+  const name = (displayName || clean).trim();
+
   if (clean.length < 3) {
     return { error: { message: 'Username must be at least 3 characters (letters, numbers, _)' } };
   }
-  if (!password || password.length < 6) {
+  if (!pass || pass.length < 6) {
     return { error: { message: 'Password must be at least 6 characters' } };
   }
 
-  // 1. If Supabase is configured, use cloud auth
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: toEmail(clean),
-        password,
-        options: {
-          data: { username: clean, display_name: displayName || clean },
-          emailRedirectTo: undefined,
-        },
-      });
-      if (error) return { error };
-
-      if (data?.user) {
-        await supabase.from('profiles').upsert({
-          id: data.user.id,
-          username: clean,
-          display_name: displayName || clean,
-          created_at: new Date().toISOString(),
-        });
-      }
-      return { data };
-    } catch (err) {
-      console.warn('Supabase signup failed, falling back to local account:', err);
-    }
-  }
-
-  // 2. Local account storage fallback
-  const accounts = getLocalAccounts();
-  if (accounts[clean]) {
-    return { error: { message: 'This username is already taken. Try another!' } };
-  }
+  const defaultProfile = {
+    name: name || clean,
+    nativeLanguage: 'Bengali (বাংলা)',
+    level: 'beginner',
+    learningGoal: 'Confident Daily English Speaking',
+    timeline: '30',
+    xpGoal: 50,
+  };
 
   const newUser = {
     id: 'user_' + clean + '_' + Date.now(),
     username: clean,
-    displayName: displayName || clean,
-    password: password, // In client fallback, stored in localStorage
+    displayName: name,
+    password: pass,
+    profile: defaultProfile,
     created_at: new Date().toISOString(),
     user_metadata: {
       username: clean,
-      display_name: displayName || clean,
+      display_name: name,
     },
   };
+
+  // 1. Try cloud registration via serverless /api/auth
+  try {
+    const res = await fetch('/api/auth?action=signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: clean,
+        password: pass,
+        displayName: name,
+        profile: defaultProfile,
+      }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: { message: data.error || 'Signup failed' } };
+    }
+
+    if (data?.user) {
+      // Cache in local storage for instant offline access
+      const accounts = getLocalAccounts();
+      accounts[clean] = { ...data.user, password: pass };
+      saveLocalAccounts(accounts);
+      localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(data.user));
+      return { data: { user: data.user } };
+    }
+  } catch (cloudErr) {
+    console.warn('Cloud signup failed, using local offline account:', cloudErr);
+  }
+
+  // 2. Offline / local fallback
+  const accounts = getLocalAccounts();
+  if (accounts[clean]) {
+    return { error: { message: 'This username is already taken. Try another!' } };
+  }
 
   accounts[clean] = newUser;
   saveLocalAccounts(accounts);
@@ -104,28 +110,62 @@ export async function signUp({ username, password, displayName }) {
 
 // ── SIGN IN ────────────────────────────────────────────────────────────────
 export async function signIn({ username, password }) {
-  const clean = username.toLowerCase().trim();
+  const clean = cleanUsername(username);
+  const pass = (password || '').trim();
 
-  // 1. If Supabase is configured, use cloud auth
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: toEmail(clean),
-        password,
-      });
-      if (!error && data?.user) return { data, error: null };
-      if (error && !error.message.includes('fetch')) return { data: null, error };
-    } catch (err) {
-      console.warn('Supabase signin failed, falling back to local account:', err);
+  if (!clean) {
+    return { error: { message: 'Please enter your username' } };
+  }
+  if (!pass) {
+    return { error: { message: 'Please enter your password' } };
+  }
+
+  // 1. Try cloud sign-in via /api/auth (cross-device support)
+  try {
+    const res = await fetch('/api/auth?action=signin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: clean, password: pass }),
+    });
+
+    const data = await res.json();
+    if (res.ok && data?.user) {
+      // Cache locally
+      const accounts = getLocalAccounts();
+      accounts[clean] = { ...data.user, password: pass };
+      saveLocalAccounts(accounts);
+      localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(data.user));
+      return { data: { user: data.user }, error: null };
     }
+
+    if (res.status === 401 || res.status === 404) {
+      // Check if local cache has it with same password
+      const accounts = getLocalAccounts();
+      const localUser = accounts[clean];
+      if (localUser && localUser.password === pass) {
+        localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(localUser));
+        return { data: { user: localUser }, error: null };
+      }
+      return { error: { message: data.error || 'Incorrect username or password' } };
+    }
+  } catch (cloudErr) {
+    console.warn('Cloud signin failed, checking local accounts:', cloudErr);
   }
 
   // 2. Local account storage fallback
   const accounts = getLocalAccounts();
   const user = accounts[clean];
 
-  if (!user || user.password !== password) {
-    return { error: { message: 'Incorrect username or password. Please try again.' } };
+  if (!user) {
+    return {
+      error: {
+        message: `Account '@${clean}' not found on this device. Please create an account or verify your spelling.`,
+      },
+    };
+  }
+
+  if (user.password !== pass) {
+    return { error: { message: 'Incorrect password. Please try again.' } };
   }
 
   localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(user));
@@ -141,18 +181,10 @@ export async function signIn({ username, password }) {
 // ── SIGN OUT ───────────────────────────────────────────────────────────────
 export async function signOut() {
   localStorage.removeItem(LOCAL_SESSION_KEY);
-  if (supabase) {
-    try {
-      await supabase.auth.signOut();
-    } catch (err) {
-      console.warn('Signout warning:', err);
-    }
-  }
 }
 
-// ── GET SESSION ────────────────────────────────────────────────────────────
+// ── GET CURRENT ACTIVE SESSION ─────────────────────────────────────────────
 export async function getSession() {
-  // Check local session first
   try {
     const raw = localStorage.getItem(LOCAL_SESSION_KEY);
     if (raw) {
@@ -162,86 +194,57 @@ export async function getSession() {
   } catch (err) {
     console.warn('Error reading local session:', err);
   }
-
-  if (supabase) {
-    try {
-      const { data } = await supabase.auth.getSession();
-      return data?.session ?? null;
-    } catch {
-      return null;
-    }
-  }
   return null;
 }
 
-// ── PROFILE & CLOUD PROGRESS SYNC ──────────────────────────────────────────
-export async function getProfile(userId) {
-  if (supabase) {
-    try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (data) return data;
-    } catch {}
-  }
-  const accounts = getLocalAccounts();
-  return Object.values(accounts).find((u) => u.id === userId) || null;
-}
-
+// ── PROFILE & PROGRESS SYNC ────────────────────────────────────────────────
 export async function updateProfile(userId, updates) {
-  if (supabase) {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq('id', userId)
-        .select()
-        .single();
-      if (data) return { data, error };
-    } catch {}
-  }
-
   const accounts = getLocalAccounts();
   const user = Object.values(accounts).find((u) => u.id === userId);
   if (user) {
-    Object.assign(user, updates);
+    user.profile = { ...(user.profile || {}), ...updates };
     accounts[user.username] = user;
     saveLocalAccounts(accounts);
+    localStorage.setItem(LOCAL_SESSION_KEY, JSON.stringify(user));
+
+    // Sync to cloud in background
+    try {
+      fetch('/api/auth?action=sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, profile: user.profile }),
+      }).catch(() => {});
+    } catch {}
+
     return { data: user, error: null };
   }
   return { data: null, error: { message: 'User not found' } };
 }
 
 export async function saveProgress(userId, progress) {
-  if (supabase) {
-    try {
-      await supabase.from('user_progress').upsert({
-        user_id: userId,
-        ...progress,
-        updated_at: new Date().toISOString(),
-      });
-    } catch {}
-  }
-}
+  const accounts = getLocalAccounts();
+  const user = Object.values(accounts).find((u) => u.id === userId);
+  if (user) {
+    user.progress = { ...(user.progress || {}), ...progress };
+    accounts[user.username] = user;
+    saveLocalAccounts(accounts);
 
-export async function loadProgress(userId) {
-  if (supabase) {
     try {
-      const { data } = await supabase
-        .from('user_progress')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      if (data) return data;
+      fetch('/api/auth?action=sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: user.username, progress: user.progress }),
+      }).catch(() => {});
     } catch {}
   }
-  return null;
 }
 
 export function onAuthChange(callback) {
-  if (!supabase) return () => {};
-  try {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(callback);
-    return () => subscription.unsubscribe();
-  } catch {
-    return () => {};
-  }
+  return () => {};
+}
+
+export async function getProfile(userId) {
+  const accounts = getLocalAccounts();
+  const user = Object.values(accounts).find((u) => u.id === userId);
+  return user?.profile || null;
 }
