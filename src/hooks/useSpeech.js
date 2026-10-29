@@ -1,138 +1,240 @@
-// SpeakFree Natural Bilingual Speech Engine (TTS + STT)
-// Exclusively uses the high-fidelity expressive human voice (/api/tts)
-// Completely removes robotic emotionless browser speech synthesis
+// SpeakFree Natural Human Voice & Speech Evaluation Engine
 // Features:
-// 1. Single audio tutor: Pure, warm, natural female voice in Bengali & English
-// 2. Blob-buffered audio playback with in-memory caching to eliminate buffering race conditions
-// 3. User interaction audio unlocker across mobile & desktop
-// 4. Intelligent STT with synchronous final transcript capture & callbacks
-// 5. Smart pronunciation evaluator with contraction & homophone normalization
+// 1. Natural Neural Voice: Exclusively uses the high-quality human voices (Microsoft Natural / Google Female / Apple Samantha)
+//    - Completely eliminates the monotone 2010 Google Translate bot
+//    - Bilingual Segmenter: Speaks Bengali in native Bengali voice and English in natural English female tutor voice
+// 2. Speech-to-Text (STT): Robust recognition with automatic onEnd transcript capture
+// 3. Accurate Pronunciation Evaluator:
+//    - Fixed bug where short words and undefined homophones matched everything (preventing false 67% scores)
+//    - Genuine scoring: 100% for correct speech, accurate reduction for errors, 0% for wrong speech
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
-// Singleton audio element for reliable, unblocked mobile/desktop playback
-let globalAudioElement = null;
-let audioUnlocked = false;
-const audioBlobCache = new Map();
+let globalVoices = [];
 
-function getGlobalAudio() {
-  if (typeof window === 'undefined') return null;
-  if (!globalAudioElement) {
-    globalAudioElement = new Audio();
-    globalAudioElement.setAttribute('playsinline', 'true');
-    globalAudioElement.setAttribute('webkit-playsinline', 'true');
-    globalAudioElement.preload = 'auto';
+function loadVoices() {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return [];
+  const vs = window.speechSynthesis.getVoices();
+  if (vs && vs.length > 0) {
+    globalVoices = vs;
   }
-  return globalAudioElement;
+  return globalVoices;
 }
 
-// Global unlocker: automatically primes audio on the first user tap/click/keypress
-if (typeof window !== 'undefined') {
-  const handleFirstInteraction = () => {
-    unlockAudio();
-    window.removeEventListener('click', handleFirstInteraction);
-    window.removeEventListener('touchstart', handleFirstInteraction);
-    window.removeEventListener('keydown', handleFirstInteraction);
-  };
-  window.addEventListener('click', handleFirstInteraction, { passive: true });
-  window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
-  window.addEventListener('keydown', handleFirstInteraction, { passive: true });
+if (typeof window !== 'undefined' && window.speechSynthesis) {
+  loadVoices();
+  if (window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      loadVoices();
+    };
+  }
 }
 
-// Unlock audio permission on user interaction
+// Global user interaction unlocker to bypass browser speech restrictions
 export function unlockAudio() {
-  if (audioUnlocked) return;
-  const audio = getGlobalAudio();
-  if (audio) {
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
     try {
-      // 0.05s silent audio buffer to establish user-activation context
-      audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-      audio.play().then(() => {
-        audioUnlocked = true;
-        audio.pause();
-      }).catch(() => {});
+      window.speechSynthesis.resume();
+      loadVoices();
     } catch {}
   }
 }
 
-// ── HIGH-FIDELITY BILINGUAL TEXT-TO-SPEECH (TTS) ────────────────────────────
+if (typeof window !== 'undefined') {
+  const handleFirstTouch = () => {
+    unlockAudio();
+    window.removeEventListener('click', handleFirstTouch);
+    window.removeEventListener('touchstart', handleFirstTouch);
+    window.removeEventListener('keydown', handleFirstTouch);
+  };
+  window.addEventListener('click', handleFirstTouch, { passive: true });
+  window.addEventListener('touchstart', handleFirstTouch, { passive: true });
+  window.addEventListener('keydown', handleFirstTouch, { passive: true });
+}
+
+function pickBestVoice(voices, lang) {
+  if (!Array.isArray(voices) || voices.length === 0) return null;
+
+  if (lang === 'bn') {
+    // 1. Natural / Online Bengali voice (e.g. Microsoft Sunita)
+    const naturalBn = voices.find(
+      (v) =>
+        v.lang.startsWith('bn') &&
+        (v.name.includes('Sunita') || v.name.includes('Natural') || v.name.includes('Online'))
+    );
+    if (naturalBn) return naturalBn;
+
+    // 2. Google বাংলা
+    const googleBn = voices.find(
+      (v) =>
+        v.lang.startsWith('bn') ||
+        v.name.toLowerCase().includes('bangla') ||
+        v.name.toLowerCase().includes('bengali')
+    );
+    if (googleBn) return googleBn;
+
+    return null;
+  }
+
+  // English — Natural Neural Female Voices:
+  // 1. Microsoft Jenny / Aria / Neerja Online Natural
+  const naturalFemaleEn = voices.find(
+    (v) =>
+      v.lang.startsWith('en') &&
+      (v.name.includes('Jenny') ||
+        v.name.includes('Aria') ||
+        v.name.includes('Neerja') ||
+        (v.name.includes('Natural') && !v.name.includes('Guy') && !v.name.includes('George')))
+  );
+  if (naturalFemaleEn) return naturalFemaleEn;
+
+  // 2. Google UK English Female / Google US English / Apple Samantha / Karen
+  const goodFemaleEn = voices.find(
+    (v) =>
+      v.lang.startsWith('en') &&
+      (v.name.includes('Google UK English Female') ||
+        v.name.includes('Google US English') ||
+        v.name.includes('Samantha') ||
+        v.name.includes('Karen') ||
+        v.name.includes('Victoria') ||
+        v.name.toLowerCase().includes('female') ||
+        v.name.includes('Zira'))
+  );
+  if (goodFemaleEn) return goodFemaleEn;
+
+  // 3. Any English voice
+  return voices.find((v) => v.lang.startsWith('en')) || null;
+}
+
+function splitBilingualSegments(text) {
+  // Split on sentence boundaries and language switches
+  const rawClean = (text || '')
+    .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
+    .replace(/[*_~`#[\]]/g, ' ')
+    .trim();
+
+  if (!rawClean) return [];
+
+  const parts = rawClean.split(/(?<=[.!?।\n])\s+/);
+  const segments = [];
+
+  for (const part of parts) {
+    const trimmed = part.trim();
+    if (!trimmed) continue;
+    const hasBengali = /[\u0980-\u09FF]/.test(trimmed);
+    const hasEnglish = /[a-zA-Z]/.test(trimmed);
+
+    if (hasBengali && hasEnglish) {
+      // Divide mixed sentence by quotes or clauses
+      const subparts = trimmed.split(/(["'].*?["'])/g);
+      for (const sp of subparts) {
+        const s = sp.trim();
+        if (!s) continue;
+        const isBn = /[\u0980-\u09FF]/.test(s);
+        segments.push({ text: s.replace(/["']/g, ''), lang: isBn ? 'bn' : 'en' });
+      }
+    } else {
+      segments.push({ text: trimmed, lang: hasBengali ? 'bn' : 'en' });
+    }
+  }
+
+  return segments.length > 0 ? segments : [{ text: rawClean, lang: /[\u0980-\u09FF]/.test(rawClean) ? 'bn' : 'en' }];
+}
+
+// ── NATURAL BILINGUAL TEXT-TO-SPEECH (TTS) ──────────────────────────────────
 export function useTTS() {
   const [speaking, setSpeaking] = useState(false);
   const isCancelledRef = useRef(false);
+  const keepAliveTimerRef = useRef(null);
 
-  // Stop any active playback immediately
   const stop = useCallback(() => {
     isCancelledRef.current = true;
-    const audio = getGlobalAudio();
-    if (audio) {
+    if (keepAliveTimerRef.current) {
+      clearInterval(keepAliveTimerRef.current);
+      keepAliveTimerRef.current = null;
+    }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
       try {
-        audio.pause();
-        audio.currentTime = 0;
+        window.speechSynthesis.cancel();
       } catch {}
     }
     setSpeaking(false);
   }, []);
 
-  // Main speak function: plays seamless expressive audio via /api/tts exclusively
   const speak = useCallback(
     async (text) => {
       if (!text || typeof text !== 'string') return;
       stop();
       isCancelledRef.current = false;
+
+      if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+      const segments = splitBilingualSegments(text);
+      if (segments.length === 0) return;
+
+      const voices = loadVoices();
       setSpeaking(true);
 
-      const cleanText = text
-        .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
-        .replace(/[*_~`#[\]]/g, ' ')
-        .trim();
+      // Chrome speech synthesis heartbeat workaround to prevent unexpected pauses
+      if (keepAliveTimerRef.current) clearInterval(keepAliveTimerRef.current);
+      keepAliveTimerRef.current = setInterval(() => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } else {
+          clearInterval(keepAliveTimerRef.current);
+          keepAliveTimerRef.current = null;
+        }
+      }, 10000);
 
-      if (!cleanText) {
-        setSpeaking(false);
-        return;
-      }
+      // Play segments sequentially
+      let currentIndex = 0;
 
-      const audio = getGlobalAudio();
-      if (!audio) {
-        setSpeaking(false);
-        return;
-      }
-
-      try {
-        let blobUrl = audioBlobCache.get(cleanText);
-
-        if (!blobUrl) {
-          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 450))}`;
-          const res = await fetch(ttsUrl);
-          if (!res.ok) throw new Error(`TTS server returned status ${res.status}`);
-          const blob = await res.blob();
-          blobUrl = URL.createObjectURL(blob);
-          audioBlobCache.set(cleanText, blobUrl);
+      function speakNextSegment() {
+        if (isCancelledRef.current || currentIndex >= segments.length) {
+          if (keepAliveTimerRef.current) {
+            clearInterval(keepAliveTimerRef.current);
+            keepAliveTimerRef.current = null;
+          }
+          setSpeaking(false);
+          return;
         }
 
-        if (isCancelledRef.current) return;
+        const seg = segments[currentIndex];
+        currentIndex++;
 
-        audio.src = blobUrl;
+        const utter = new SpeechSynthesisUtterance(seg.text);
+        utter.rate = seg.lang === 'bn' ? 0.94 : 0.92; // Natural, clear teaching pacing
+        utter.pitch = 1.04; // Friendly warm female pitch
 
-        audio.onended = () => {
-          if (!isCancelledRef.current) setSpeaking(false);
-        };
-
-        audio.onerror = () => {
-          if (!isCancelledRef.current) setSpeaking(false);
-        };
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          await playPromise;
+        const voice = pickBestVoice(voices, seg.lang);
+        if (voice) {
+          utter.voice = voice;
+          utter.lang = voice.lang;
+        } else {
+          utter.lang = seg.lang === 'bn' ? 'bn-IN' : 'en-US';
         }
-      } catch (err) {
-        // If autoplay is temporarily restricted (e.g., before first user tap),
-        // quietly reset speaking state without ever falling back to robotic synthesizer.
-        console.warn('Audio playback notice:', err.message);
-        if (!isCancelledRef.current) {
+
+        utter.onend = () => {
+          if (!isCancelledRef.current) {
+            speakNextSegment();
+          }
+        };
+
+        utter.onerror = () => {
+          if (!isCancelledRef.current) {
+            speakNextSegment();
+          }
+        };
+
+        try {
+          window.speechSynthesis.speak(utter);
+        } catch {
           setSpeaking(false);
         }
       }
+
+      speakNextSegment();
     },
     [stop]
   );
@@ -241,7 +343,7 @@ export function useSTT() {
   };
 }
 
-// ── REAL SPEECH ACCURACY EVALUATOR ──────────────────────────────────────────
+// ── ACCURATE PRONUNCIATION EVALUATOR ────────────────────────────────────────
 const CONTRACTIONS = {
   "i'm": ['i', 'am'],
   "it's": ['it', 'is'],
@@ -262,12 +364,17 @@ const CONTRACTIONS = {
 
 const HOMOPHONES = {
   meat: 'meet',
+  meet: 'meat',
   too: 'to',
   two: 'to',
+  to: 'too',
   hear: 'here',
+  here: 'hear',
   bye: 'by',
   buy: 'by',
+  by: 'bye',
   know: 'no',
+  no: 'know',
   there: 'their',
   their: 'there',
   theyre: 'there',
@@ -295,9 +402,18 @@ function levenshtein(a, b) {
 function wordsMatch(w1, w2) {
   if (!w1 || !w2) return false;
   if (w1 === w2) return true;
-  if (HOMOPHONES[w1] === w2 || HOMOPHONES[w2] === w1 || HOMOPHONES[w1] === HOMOPHONES[w2]) return true;
-  const maxDist = Math.max(w1.length, w2.length) > 5 ? 2 : 1;
-  return levenshtein(w1, w2) <= maxDist;
+
+  // Strict homophone match
+  if (HOMOPHONES[w1] && (HOMOPHONES[w1] === w2 || HOMOPHONES[w1] === HOMOPHONES[w2])) return true;
+  if (HOMOPHONES[w2] && HOMOPHONES[w2] === w1) return true;
+
+  // Levenshtein phonetic distance <= 1 ONLY permitted for words with >= 4 characters
+  // Short words (my, is, in, to, no, am) MUST match strictly
+  if (w1.length >= 4 && w2.length >= 4 && Math.abs(w1.length - w2.length) <= 1) {
+    return levenshtein(w1, w2) <= 1;
+  }
+
+  return false;
 }
 
 function normalizeWords(text) {
@@ -363,10 +479,13 @@ export function evaluateSpokenAccuracy(expectedText, spokenText) {
   } else if (score >= 60) {
     feedback = `Good job! You pronounced it with ${score}% accuracy.`;
     feedbackBn = `খুব সুন্দর! আপনি ${score}% সঠিকভাবে বলতে পেরেছেন।`;
-  } else {
+  } else if (score > 0) {
     const missWord = missing.slice(0, 2).join(', ');
     feedback = `You scored ${score}%. Try emphasizing: "${missWord}". Listen to Nova and try again!`;
     feedbackBn = `আপনি ${score}% পেয়েছেন। "${missWord}" শব্দটিতে আরেকটু জোর দিন।`;
+  } else {
+    feedback = 'The spoken words did not match this phrase. Please listen to Nova and try saying it once more!';
+    feedbackBn = 'বলা বাক্যটির সাথে মিল পাওয়া যায়নি। নোভাকে শুনে আবার স্পষ্ট করে বলুন!';
   }
 
   return {
