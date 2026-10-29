@@ -5,6 +5,7 @@ import Onboarding from './pages/Onboarding';
 import AuthPage from './pages/AuthPage';
 import Sidebar from './components/Sidebar';
 import BottomNav from './components/BottomNav';
+import MobileHeader from './components/MobileHeader';
 import HomePage from './pages/HomePage';
 import LearnPage from './pages/LearnPage';
 import ChatPage from './pages/ChatPage';
@@ -83,9 +84,12 @@ function AppContent() {
   return (
     <div className={`flex min-h-screen ${theme === 'dark' ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
       <Sidebar />
-      <main className="flex-1 flex flex-col min-w-0">
-        {pages[activePage] || <HomePage />}
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        {activePage !== 'chat' && <MobileHeader />}
+        <main className="flex-1 flex flex-col min-w-0">
+          {pages[activePage] || <HomePage />}
+        </main>
+      </div>
       <BottomNav />
     </div>
   );

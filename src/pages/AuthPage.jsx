@@ -127,8 +127,8 @@ export default function AuthPage({ onSkip }) {
   function sub(e = '') { return `${isDark ? 'text-slate-400' : 'text-slate-500'} ${e}`; }
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-center px-4 py-8 ${bg()}`}>
-      <div className={`w-full max-w-sm ${card('p-7')} animate-float-up`}>
+    <div className={`min-h-[100dvh] flex flex-col items-center justify-center px-3.5 sm:px-6 py-6 overflow-y-auto transition-colors ${bg()}`}>
+      <div className={`w-full max-w-sm ${card('p-5 sm:p-7')} animate-float-up my-auto`}>
 
         {/* Logo */}
         <div className="flex items-center gap-3 mb-6">

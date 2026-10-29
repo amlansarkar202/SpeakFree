@@ -109,9 +109,9 @@ export default function Onboarding() {
   const stepName = STEPS[step];
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-center px-4 py-8 ${bg()}`}>
+    <div className={`min-h-[100dvh] flex flex-col items-center justify-start sm:justify-center px-3 sm:px-6 py-4 sm:py-8 overflow-y-auto transition-colors ${bg()}`}>
       {/* Progress dots */}
-      <div className="flex gap-1.5 mb-8">
+      <div className="flex gap-1.5 my-3 sm:mb-6 shrink-0">
         {STEPS.map((_, i) => (
           <div
             key={i}
@@ -120,13 +120,13 @@ export default function Onboarding() {
                 ? 'w-6 bg-brand-500'
                 : i < step
                   ? 'w-3 bg-brand-400'
-                  : isDark ? 'w-3 bg-[#1e2d45]' : 'w-3 bg-brand-100'
+                  : isDark ? 'w-3 bg-[#1e2d45]' : 'w-3 bg-brand-200'
             }`}
           />
         ))}
       </div>
 
-      <div className={`w-full max-w-md ${card('p-6 sm:p-8')} animate-float-up`}>
+      <div className={`w-full max-w-lg ${card('p-4 sm:p-7')} animate-float-up my-auto`}>
 
         {/* ── WELCOME ── */}
         {stepName === 'welcome' && (
@@ -227,8 +227,8 @@ export default function Onboarding() {
             <div className="space-y-5">
               {assessQuestions.map((q, qi) => (
                 <div key={qi}>
-                  <p className={`text-xs font-semibold mb-2 ${text()}`}>{q.q}</p>
-                  <div className="grid grid-cols-2 gap-1.5">
+                  <p className={`text-xs sm:text-sm font-semibold mb-2.5 ${text()}`}>{q.q}</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {q.options.map((opt) => {
                       const selected = assessAnswers[qi] === opt.val;
                       return (
@@ -239,15 +239,18 @@ export default function Onboarding() {
                             arr[qi] = opt.val;
                             setAssessAnswers(arr);
                           }}
-                          className={`px-2.5 py-2 rounded-xl text-[11px] font-medium border text-left transition-all
+                          className={`px-3 py-2.5 rounded-xl text-xs sm:text-[13px] font-medium border text-left transition-all cursor-pointer
                             ${selected
-                              ? 'border-brand-500 bg-brand-500/15 text-brand-400'
+                              ? 'border-brand-500 bg-brand-500/15 text-brand-400 font-semibold shadow-xs'
                               : isDark
-                                ? 'border-[#1e2d45] bg-[#1e2d45]/40 text-slate-400 hover:border-brand-500/40'
-                                : 'border-brand-100 bg-brand-50 text-slate-500 hover:border-brand-300'}
+                                ? 'border-[#1e2d45] bg-[#1e2d45]/40 text-slate-300 hover:border-brand-500/40'
+                                : 'border-brand-100 bg-brand-50 text-slate-600 hover:border-brand-300'}
                           `}
                         >
-                          {opt.label}
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span>{opt.label}</span>
+                            {selected && <Check size={14} className="text-brand-500 shrink-0" />}
+                          </div>
                         </button>
                       );
                     })}

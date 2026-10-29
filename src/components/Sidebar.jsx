@@ -26,7 +26,7 @@ export default function Sidebar({ onNav }) {
 
   return (
     <aside className={`
-      hidden md:flex flex-col h-screen w-60 shrink-0 sticky top-0
+      hidden lg:flex flex-col h-screen w-64 shrink-0 sticky top-0
       ${theme === 'dark'
         ? 'bg-[#111827] border-r border-[#1e2d45]'
         : 'bg-[#e8eeff] border-r border-[#c7d7f8]'}

@@ -1,30 +1,35 @@
-import { Zap, Flame, BookOpen, MessageCircle, Target, ChevronRight, Mic, Trophy, Star } from 'lucide-react';
+import { Zap, Flame, BookOpen, MessageCircle, Target, ChevronRight, Mic, Trophy, Star, Sparkles } from 'lucide-react';
 import useAppStore from '../store/useAppStore';
-import { CURRICULUM, LEVELS, getAllLessons } from '../data/curriculum';
+import { CURRICULUM, getAllLessons } from '../data/curriculum';
 
 function StatCard({ icon: Icon, value, label, color, theme }) {
+  const isDark = theme === 'dark';
   return (
     <div className={`
-      p-4 rounded-2xl flex items-center gap-3
-      ${theme === 'dark' ? 'bg-[#161f2e] border border-[#1e2d45]' : 'bg-white border border-[#c7d7f8]'}
+      p-3 sm:p-4 rounded-2xl flex items-center gap-2.5 sm:gap-3 transition-all min-w-0
+      ${isDark ? 'bg-[#161f2e] border border-[#1e2d45]' : 'bg-white border border-[#c7d7f8] shadow-xs'}
     `}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${color}`}>
-        <Icon size={20} className="text-white" />
+      <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 ${color}`}>
+        <Icon size={18} className="text-white" />
       </div>
-      <div>
-        <p className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-slate-800'}`}>{value}</p>
-        <p className={`text-[11px] ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{label}</p>
+      <div className="min-w-0 flex-1">
+        <p className={`text-base sm:text-xl font-bold truncate leading-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>
+          {value}
+        </p>
+        <p className={`text-[10px] sm:text-xs font-medium truncate mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+          {label}
+        </p>
       </div>
     </div>
   );
 }
 
 export default function HomePage() {
-  const theme         = useAppStore((s) => s.theme);
-  const userProfile   = useAppStore((s) => s.userProfile);
-  const todayProgress = useAppStore((s) => s.todayProgress);
+  const theme            = useAppStore((s) => s.theme);
+  const userProfile      = useAppStore((s) => s.userProfile);
+  const todayProgress    = useAppStore((s) => s.todayProgress);
   const completedLessons = useAppStore((s) => s.completedLessons);
-  const setActivePage = useAppStore((s) => s.setActivePage);
+  const setActivePage    = useAppStore((s) => s.setActivePage);
 
   const isDark = theme === 'dark';
   const levelKey = userProfile?.level || 'beginner';
@@ -40,147 +45,172 @@ export default function HomePage() {
   const units = CURRICULUM[levelKey] || CURRICULUM.beginner;
 
   return (
-    <div className={`flex-1 min-h-screen pb-20 md:pb-0 ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+      <div className="max-w-4xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6">
 
-        {/* Header */}
-        <div className="flex items-start justify-between">
+        {/* Greeting Banner */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5 sm:gap-4">
           <div>
-            <p className={`text-sm ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
               {greetingBn} · {greeting}
             </p>
-            <h2 className={`text-2xl font-bold mt-0.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
-              {userProfile?.name} 👋
-            </h2>
+            <h1 className={`text-xl sm:text-2xl font-bold tracking-tight mt-0.5 ${isDark ? 'text-white' : 'text-slate-800'}`}>
+              {userProfile?.name || 'Learner'} 👋
+            </h1>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${isDark ? 'bg-[#161f2e] text-warn-400' : 'bg-warn-400/10 text-warn-500'}`}>
-              <Flame size={15} /> {todayProgress.streak}
-            </div>
+          <div className="flex items-center gap-2 self-start sm:self-auto">
+            <span className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full ${
+              isDark ? 'bg-brand-500/15 text-brand-300' : 'bg-brand-100 text-brand-700'
+            }`}>
+              🎯 Goal: {userProfile?.learningGoal || 'Daily English'}
+            </span>
           </div>
         </div>
 
         {/* Daily Goal Card */}
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-brand-600 to-brand-800 p-5 shadow-xl shadow-brand-600/20">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute -top-4 -right-4 w-32 h-32 rounded-full bg-white" />
-            <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full bg-white" />
-          </div>
-          <div className="relative">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <p className="text-brand-200 text-xs font-medium mb-0.5">Today's Goal</p>
-                <h3 className="text-white font-bold text-lg">Daily XP Challenge</h3>
-              </div>
-              <div className="text-right">
-                <p className="text-white font-bold text-2xl">{todayProgress.xpEarned}</p>
-                <p className="text-brand-200 text-xs">/ {todayProgress.xpGoal} XP</p>
-              </div>
-            </div>
-            <div className="h-2 bg-brand-900/50 rounded-full mb-3">
-              <div
-                className="h-2 rounded-full bg-gradient-to-r from-warn-400 to-accent-400 transition-all duration-700"
-                style={{ width: `${xpPct}%` }}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <p className="text-brand-200 text-xs">
-                {xpPct >= 100
-                  ? '🎉 Goal reached! Amazing!'
-                  : `${todayProgress.xpGoal - todayProgress.xpEarned} XP to go!`}
+        <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-brand-600 via-brand-700 to-brand-800 p-4 sm:p-5 shadow-lg shadow-brand-600/20 text-white">
+          <div className="flex items-center justify-between gap-2 mb-2.5">
+            <div>
+              <p className="text-brand-200 text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
+                Daily XP Mission
               </p>
-              <button
-                onClick={() => setActivePage('learn')}
-                className="flex items-center gap-1 text-xs font-semibold text-white bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded-full transition-all"
-              >
-                Continue <ChevronRight size={12} />
-              </button>
+              <h2 className="text-white font-bold text-base sm:text-lg">
+                {todayProgress.xpEarned >= todayProgress.xpGoal ? '🎉 Mission Completed!' : 'Keep Speaking & Learn'}
+              </h2>
+            </div>
+            <div className="text-right shrink-0">
+              <span className="text-xl sm:text-2xl font-black">{todayProgress.xpEarned}</span>
+              <span className="text-brand-200 text-xs sm:text-sm font-medium"> / {todayProgress.xpGoal} XP</span>
             </div>
           </div>
-        </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <StatCard icon={Zap}       value={`${todayProgress.xpEarned} XP`} label="XP Earned Today"  color="bg-warn-500"    theme={theme} />
-          <StatCard icon={BookOpen}  value={todayProgress.lessonsCompleted}  label="Lessons Done"      color="bg-brand-600"  theme={theme} />
-          <StatCard icon={Flame}     value={`${todayProgress.streak}d`}      label="Streak"            color="bg-accent-500" theme={theme} />
-          <StatCard icon={Trophy}    value={completedLessons.length}          label="Total Completed"  color="bg-success-500" theme={theme} />
-        </div>
+          {/* XP Progress Bar */}
+          <div className="h-2 sm:h-2.5 bg-brand-950/40 rounded-full overflow-hidden mb-3">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-warn-400 to-accent-400 transition-all duration-700"
+              style={{ width: `${xpPct}%` }}
+            />
+          </div>
 
-        {/* Next Lesson */}
-        {nextLesson && (
-          <div>
-            <h3 className={`text-sm font-semibold mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              📌 Continue Where You Left Off
-            </h3>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+            <p className="text-brand-100 text-[11px] sm:text-xs">
+              {xpPct >= 100
+                ? 'Great job today! You hit your speaking goal.'
+                : `${todayProgress.xpGoal - todayProgress.xpEarned} XP left to complete today's mission.`}
+            </p>
             <button
               onClick={() => setActivePage('learn')}
-              className={`w-full flex items-center gap-4 p-4 rounded-2xl border text-left transition-all hover:scale-[1.01] active:scale-[0.99]
-                ${isDark ? 'bg-[#161f2e] border-[#1e2d45] hover:border-brand-500/40' : 'bg-white border-[#c7d7f8] hover:border-brand-300'}
-                shadow-sm`}
+              className="inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs bg-white/20 hover:bg-white/30 active:scale-95 px-3 py-1.5 rounded-full transition-all shrink-0 cursor-pointer"
             >
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shrink-0">
-                <BookOpen size={22} className="text-white" />
+              Start Lesson <ChevronRight size={13} />
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <StatCard icon={Zap}       value={`${todayProgress.xpEarned} XP`} label="Today's XP"     color="bg-warn-500"    theme={theme} />
+          <StatCard icon={BookOpen}  value={todayProgress.lessonsCompleted}  label="Lessons Done"   color="bg-brand-600"  theme={theme} />
+          <StatCard icon={Flame}     value={`${todayProgress.streak}d`}      label="Day Streak"     color="bg-accent-500" theme={theme} />
+          <StatCard icon={Trophy}    value={completedLessons.length}          label="Completed"      color="bg-success-500" theme={theme} />
+        </div>
+
+        {/* Next Lesson Callout */}
+        {nextLesson && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                Up Next in Syllabus
+              </h3>
+              <span className={`text-[11px] font-medium ${isDark ? 'text-brand-400' : 'text-brand-600'}`}>
+                Unit {nextLesson.unitId?.toUpperCase() || '1'}
+              </span>
+            </div>
+
+            <button
+              onClick={() => setActivePage('learn')}
+              className={`w-full flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border text-left transition-all hover:scale-[1.005] active:scale-[0.99]
+                ${isDark ? 'bg-[#161f2e] border-[#1e2d45] hover:border-brand-500/50' : 'bg-white border-[#c7d7f8] hover:border-brand-300 shadow-xs'}
+              `}
+            >
+              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shrink-0 shadow-md shadow-brand-600/20">
+                <BookOpen size={20} className="text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`font-semibold text-sm truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                <p className={`font-bold text-sm sm:text-base truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
                   {nextLesson.title}
                 </p>
-                <p className={`text-[11px] truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+                <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                   {nextLesson.titleBn}
                 </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${isDark ? 'bg-brand-500/20 text-brand-400' : 'bg-brand-100 text-brand-600'}`}>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider ${
+                    isDark ? 'bg-brand-500/20 text-brand-300' : 'bg-brand-100 text-brand-700'
+                  }`}>
                     {nextLesson.type}
                   </span>
-                  <span className={`text-[10px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    ~{nextLesson.duration} min · +{nextLesson.xp} XP
+                  <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    ~{nextLesson.duration}m · +{nextLesson.xp} XP
                   </span>
                 </div>
               </div>
-              <ChevronRight size={18} className={isDark ? 'text-slate-500' : 'text-slate-400'} />
+              <div className={`p-2 rounded-xl shrink-0 ${isDark ? 'bg-white/5 text-brand-400' : 'bg-brand-50 text-brand-600'}`}>
+                <ChevronRight size={18} />
+              </div>
             </button>
           </div>
         )}
 
-        {/* Quick Actions */}
+        {/* Quick Practice Actions */}
         <div>
-          <h3 className={`text-sm font-semibold mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-            ⚡ Quick Practice
+          <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+            Quick Practice
           </h3>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             <button
               onClick={() => setActivePage('chat')}
-              className="p-4 rounded-2xl bg-gradient-to-br from-success-500 to-emerald-600 text-white shadow-lg shadow-success-500/20 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="p-4 rounded-2xl bg-gradient-to-br from-success-500 to-emerald-600 text-white shadow-md shadow-success-500/20 text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
-              <MessageCircle size={22} className="mb-2" />
-              <p className="font-semibold text-sm">Talk to Nova</p>
-              <p className="text-[11px] text-green-100">AI Tutor is online!</p>
+              <div className="flex items-center justify-between mb-2">
+                <MessageCircle size={22} />
+                <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                  Live AI ⚡
+                </span>
+              </div>
+              <p className="font-bold text-sm sm:text-base">Speak with Nova</p>
+              <p className="text-xs text-emerald-100 mt-0.5">24/7 spoken conversation in English & Bengali</p>
             </button>
+
             <button
               onClick={() => setActivePage('learn')}
-              className="p-4 rounded-2xl bg-gradient-to-br from-accent-500 to-orange-600 text-white shadow-lg shadow-accent-500/20 text-left transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="p-4 rounded-2xl bg-gradient-to-br from-accent-500 to-orange-600 text-white shadow-md shadow-accent-500/20 text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
-              <Mic size={22} className="mb-2" />
-              <p className="font-semibold text-sm">Speaking Practice</p>
-              <p className="text-[11px] text-orange-100">Practice pronunciation</p>
+              <div className="flex items-center justify-between mb-2">
+                <Mic size={22} />
+                <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                  Pronunciation 🎙️
+                </span>
+              </div>
+              <p className="font-bold text-sm sm:text-base">Daily Practice</p>
+              <p className="text-xs text-orange-100 mt-0.5">Test speaking clarity and reduce hesitation</p>
             </button>
           </div>
         </div>
 
-        {/* Course Overview */}
+        {/* Course Roadmap Progress */}
         <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className={`text-sm font-semibold ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              📚 Your Course
+          <div className="flex items-center justify-between mb-2">
+            <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              Course Roadmap
             </h3>
             <button
               onClick={() => setActivePage('learn')}
-              className="text-xs text-brand-500 font-medium"
+              className="text-xs font-semibold text-brand-500 hover:text-brand-400 cursor-pointer"
             >
-              View All
+              View Full Syllabus →
             </button>
           </div>
+
           <div className="space-y-2">
             {units.map((unit) => {
               const done = unit.lessons.filter((l) => completedLessons.includes(l.id)).length;
@@ -188,27 +218,36 @@ export default function HomePage() {
               return (
                 <div
                   key={unit.id}
-                  className={`flex items-center gap-3 p-3.5 rounded-2xl border ${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8]'}`}
+                  onClick={() => setActivePage('learn')}
+                  className={`flex items-center gap-3 p-3 sm:p-3.5 rounded-2xl border transition-all cursor-pointer hover:border-brand-500/40
+                    ${isDark ? 'bg-[#161f2e] border-[#1e2d45]' : 'bg-white border-[#c7d7f8] shadow-xs'}`}
                 >
-                  <div className="text-2xl">{unit.emoji}</div>
+                  <div className="text-2xl shrink-0">{unit.emoji}</div>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-semibold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                      {unit.title}
-                    </p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className={`flex-1 h-1 rounded-full ${isDark ? 'bg-[#1e2d45]' : 'bg-brand-100'}`}>
-                        <div
-                          className="h-1 rounded-full bg-brand-500 transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                      <span className={`text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <p className={`text-xs sm:text-sm font-bold truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                        {unit.title}
+                      </p>
+                      <span className={`text-[10px] sm:text-xs font-semibold shrink-0 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
                         {done}/{unit.lessons.length}
                       </span>
                     </div>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <div className={`flex-1 h-1.5 rounded-full overflow-hidden ${isDark ? 'bg-[#1e2d45]' : 'bg-brand-100'}`}>
+                        <div
+                          className="h-full rounded-full bg-brand-500 transition-all duration-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                      <span className="text-[10px] font-bold text-brand-500 shrink-0">
+                        {pct}%
+                      </span>
+                    </div>
                   </div>
-                  {done === unit.lessons.length && (
-                    <Star size={16} className="text-warn-400 fill-warn-400" />
+                  {done === unit.lessons.length ? (
+                    <Star size={16} className="text-warn-400 fill-warn-400 shrink-0" />
+                  ) : (
+                    <ChevronRight size={16} className={`shrink-0 ${isDark ? 'text-slate-600' : 'text-slate-400'}`} />
                   )}
                 </div>
               );

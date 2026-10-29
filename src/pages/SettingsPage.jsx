@@ -70,12 +70,12 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className={`flex-1 min-h-screen pb-20 md:pb-0 ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+    <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
+      <div className="max-w-2xl mx-auto px-3.5 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-5">
 
         <div>
-          <h2 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-slate-800'}`}>Settings</h2>
-          <p className={`text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>সেটিংস ও পছন্দসমূহ</p>
+          <h1 className={`text-xl sm:text-2xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-slate-800'}`}>Settings</h1>
+          <p className={`text-xs sm:text-sm mt-0.5 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>সেটিংস ও পছন্দসমূহ</p>
         </div>
 
         {/* Account card */}

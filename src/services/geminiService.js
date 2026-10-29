@@ -18,14 +18,14 @@ let genAI = null;
 let cachedKey = null;
 let model = null;
 
-function getModel() {
+function getModel(modelName = 'gemini-3.5-flash-lite') {
   const key = getApiKey();
   if (!key) return null;
 
   if (!genAI || cachedKey !== key) {
     cachedKey = key;
     genAI = new GoogleGenerativeAI(key);
-    model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    model = genAI.getGenerativeModel({ model: modelName });
   }
   return model;
 }

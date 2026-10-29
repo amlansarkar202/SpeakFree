@@ -16,11 +16,11 @@ export default function BottomNav() {
 
   return (
     <nav className={`
-      md:hidden fixed bottom-0 inset-x-0 z-50 flex
+      lg:hidden fixed bottom-0 inset-x-0 z-50 flex items-center justify-around
       ${theme === 'dark'
         ? 'bg-[#111827]/95 border-t border-[#1e2d45]'
         : 'bg-white/95 border-t border-[#c7d7f8]'}
-      backdrop-blur-md safe-bottom
+      backdrop-blur-lg safe-bottom shadow-lg shadow-black/10
     `}>
       {NAV.map(({ id, icon: Icon, label }) => {
         const active = activePage === id;
