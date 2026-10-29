@@ -1,87 +1,50 @@
-// SpeakFree Universal Multi-Replica Cloud Account Engine
-// Triple-replica cloud persistence for 100% cross-device sync reliability
+// SpeakFree Universal Cloud Account Engine
+// Powered by official Vercel Blob Cloud Storage for unlimited, cross-device persistence
 
-const REPLICA_STORES = [
-  'https://api.restful-api.dev/objects/ff808181a09d98f701a188da530a561b',
-  'https://api.restful-api.dev/objects/ff808181a09d98f701a1893a56f2573a',
-  'https://api.restful-api.dev/objects/ff808181a09d98f701a1893bf41b573c',
-];
+import { put } from '@vercel/blob';
 
-// In-memory cache for fast hot lambdas
-let memoryAccounts = null;
-let lastFetch = 0;
-
-async function fetchCloudAccounts() {
-  const now = Date.now();
-  if (memoryAccounts && Object.keys(memoryAccounts).length > 0 && now - lastFetch < 3000) {
-    return memoryAccounts;
-  }
-
-  const merged = { ...(memoryAccounts || {}) };
-  let anySuccess = false;
-
-  const fetchPromises = REPLICA_STORES.map(async (url) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 3500);
-    try {
-      const res = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (res.ok) {
-        const doc = await res.json();
-        const accs = doc?.data?.accounts;
-        if (accs && typeof accs === 'object') {
-          anySuccess = true;
-          Object.assign(merged, accs);
-        }
-      }
-    } catch (err) {
-      clearTimeout(timeout);
-    }
-  });
-
-  await Promise.all(fetchPromises);
-
-  if (anySuccess || Object.keys(merged).length > 0) {
-    memoryAccounts = merged;
-    lastFetch = now;
-  }
-  return memoryAccounts || {};
-}
-
-async function saveCloudAccounts(accounts) {
-  memoryAccounts = accounts;
-  lastFetch = Date.now();
-
-  const bodyStr = JSON.stringify({
-    name: 'speakfree_accounts_store_v1',
-    data: { accounts },
-  });
-
-  const savePromises = REPLICA_STORES.map(async (url) => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    try {
-      const res = await fetch(url, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: bodyStr,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      return res.ok;
-    } catch (err) {
-      clearTimeout(timeout);
-      return false;
-    }
-  });
-
-  const results = await Promise.all(savePromises);
-  const successCount = results.filter(Boolean).length;
-  return successCount > 0;
-}
+const BLOB_BASE = 'https://kvodo4vlbna9aja5.public.blob.vercel-storage.com';
 
 function cleanUsername(u) {
   return (u || '').toLowerCase().trim().replace(/[^a-z0-9_]/g, '');
+}
+
+const memoryUserCache = new Map();
+
+async function getUser(username) {
+  if (memoryUserCache.has(username)) {
+    return memoryUserCache.get(username);
+  }
+
+  try {
+    const res = await fetch(`${BLOB_BASE}/users/${username}.json?t=${Date.now()}`, {
+      cache: 'no-store',
+      headers: { 'Cache-Control': 'no-cache, no-store, max-age=0' },
+    });
+    if (res.ok) {
+      const user = await res.json();
+      memoryUserCache.set(username, user);
+      return user;
+    }
+  } catch (err) {
+    console.warn('Fetch user blob error:', err.message);
+  }
+  return null;
+}
+
+async function saveUser(username, userData) {
+  memoryUserCache.set(username, userData);
+  try {
+    await put(`users/${username}.json`, JSON.stringify(userData), {
+      access: 'public',
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+    return true;
+  } catch (err) {
+    console.error('Save user blob error:', err);
+    return false;
+  }
 }
 
 async function parseBody(req) {
@@ -126,7 +89,6 @@ export default async function handler(req, res) {
 
   try {
     const body = await parseBody(req);
-    const accounts = await fetchCloudAccounts();
 
     // ── SIGN UP ─────────────────────────────────────────────────────────────
     if (action === 'signup') {
@@ -141,7 +103,9 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Password must be at least 6 characters' });
       }
 
-      if (accounts[username]) {
+      // Check if username is already taken
+      const existing = await getUser(username);
+      if (existing) {
         return res.status(409).json({ error: `The username '@${username}' is already taken. Please choose another.` });
       }
 
@@ -167,8 +131,7 @@ export default async function handler(req, res) {
         },
       };
 
-      accounts[username] = newUser;
-      const saved = await saveCloudAccounts(accounts);
+      const saved = await saveUser(username, newUser);
       if (!saved) {
         return res.status(503).json({ error: 'Cloud storage temporarily busy. Please try again.' });
       }
@@ -187,7 +150,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Please enter both username and password' });
       }
 
-      const user = accounts[username];
+      const user = await getUser(username);
       if (!user) {
         return res.status(404).json({ error: `Account '@${username}' not found. Please verify spelling or create an account.` });
       }
@@ -204,23 +167,30 @@ export default async function handler(req, res) {
     // ── SYNC PROFILE & PROGRESS ─────────────────────────────────────────────
     if (action === 'sync') {
       const username = cleanUsername(body.username);
-      if (username && accounts[username]) {
-        if (body.profile) {
-          accounts[username].profile = { ...accounts[username].profile, ...body.profile };
-          if (body.profile.name) {
-            accounts[username].displayName = body.profile.name;
-            if (accounts[username].user_metadata) {
-              accounts[username].user_metadata.display_name = body.profile.name;
-            }
+      if (!username) {
+        return res.status(400).json({ error: 'Username required for sync' });
+      }
+
+      const user = await getUser(username);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found for sync' });
+      }
+
+      if (body.profile) {
+        user.profile = { ...(user.profile || {}), ...body.profile };
+        if (body.profile.name) {
+          user.displayName = body.profile.name;
+          if (user.user_metadata) {
+            user.user_metadata.display_name = body.profile.name;
           }
         }
-        if (body.progress) {
-          accounts[username].progress = { ...(accounts[username].progress || {}), ...body.progress };
-        }
-        await saveCloudAccounts(accounts);
-        return res.status(200).json({ success: true });
       }
-      return res.status(404).json({ error: 'User not found for sync' });
+      if (body.progress) {
+        user.progress = { ...(user.progress || {}), ...body.progress };
+      }
+
+      await saveUser(username, user);
+      return res.status(200).json({ success: true });
     }
 
     return res.status(400).json({ error: 'Invalid action parameter' });
