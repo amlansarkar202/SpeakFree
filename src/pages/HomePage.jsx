@@ -1,6 +1,9 @@
-import { Zap, Flame, BookOpen, MessageCircle, Target, ChevronRight, Mic, Trophy, Star, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Zap, Flame, BookOpen, MessageCircle, Target, ChevronRight, Mic, Trophy, Star, Sparkles, Volume2, ArrowRight } from 'lucide-react';
 import useAppStore from '../store/useAppStore';
 import { CURRICULUM, getAllLessons } from '../data/curriculum';
+import LessonView from '../components/LessonView';
+import { useTTS } from '../hooks/useSpeech';
 
 function StatCard({ icon: Icon, value, label, color, theme }) {
   const isDark = theme === 'dark';
@@ -31,10 +34,13 @@ export default function HomePage() {
   const completedLessons = useAppStore((s) => s.completedLessons);
   const setActivePage    = useAppStore((s) => s.setActivePage);
 
+  const [activeLesson, setActiveLesson] = useState(null);
+  const { speak, speaking } = useTTS();
+
   const isDark = theme === 'dark';
   const levelKey = userProfile?.level || 'beginner';
   const allLessons = getAllLessons(levelKey);
-  const nextLesson = allLessons.find((l) => !completedLessons.includes(l.id));
+  const nextLesson = allLessons.find((l) => !completedLessons.includes(l.id)) || allLessons[0];
 
   const xpPct = Math.min(100, Math.round((todayProgress.xpEarned / todayProgress.xpGoal) * 100));
 
@@ -43,6 +49,15 @@ export default function HomePage() {
   const greetingBn = hour < 12 ? 'সুপ্রভাত' : hour < 17 ? 'শুভ বিকেল' : 'শুভ সন্ধ্যা';
 
   const units = CURRICULUM[levelKey] || CURRICULUM.beginner;
+
+  function playNovaDailyTip() {
+    const tip = `নমস্কার ${userProfile?.name || 'বন্ধু'}! Today's speaking goal is: ${nextLesson?.title}. যখন কথা বলবে, ভুল হওয়ার ভয় করবে না। Listen to my pronunciation, and repeat after me. Let us begin!`;
+    speak(tip);
+  }
+
+  if (activeLesson) {
+    return <LessonView lesson={activeLesson} onClose={() => setActiveLesson(null)} />;
+  }
 
   return (
     <div className={`flex-1 min-h-screen pb-28 lg:pb-10 transition-colors ${isDark ? 'bg-[#0f1623]' : 'bg-[#f0f4ff]'}`}>
@@ -62,8 +77,57 @@ export default function HomePage() {
             <span className={`text-[11px] sm:text-xs font-semibold px-2.5 py-1 rounded-full ${
               isDark ? 'bg-brand-500/15 text-brand-300' : 'bg-brand-100 text-brand-700'
             }`}>
-              🎯 Goal: {userProfile?.learningGoal || 'Daily English'}
+              🎯 Focus: {userProfile?.learningGoal || 'Daily English Fluency'}
             </span>
+          </div>
+        </div>
+
+        {/* Nova Personal Mentor Calling Card */}
+        <div className={`p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-all ${
+          isDark ? 'bg-[#161f2e] border-brand-500/30 shadow-lg shadow-brand-600/10' : 'bg-white border-brand-200 shadow-sm'
+        }`}>
+          <div className="flex items-start gap-3.5">
+            <div className="relative shrink-0">
+              <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center text-white font-black text-lg shadow-md shadow-brand-600/30 ${speaking ? 'animate-pulse' : ''}`}>
+                N
+              </div>
+              {speaking && (
+                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-success-400 border-2 border-white animate-ping" />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap mb-1">
+                <span className={`font-bold text-sm sm:text-base ${isDark ? 'text-white' : 'text-slate-800'}`}>
+                  Nova — Your AI Mentor
+                </span>
+                <span className="text-[10px] bg-brand-500/15 text-brand-400 font-semibold px-2 py-0.5 rounded-full">
+                  Bengali & English Spoken Coach
+                </span>
+              </div>
+              <p className={`text-xs sm:text-sm leading-relaxed mb-3 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                "নমস্কার {userProfile?.name || 'বন্ধু'}! Today we will practice speaking: <strong>{nextLesson.title}</strong>. I will guide you phrase-by-phrase with live voice feedback!"
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  onClick={() => setActiveLesson(nextLesson)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-brand-600/30 cursor-pointer active:scale-95 transition-all"
+                >
+                  <Mic size={15} /> Start Spoken Class with Nova
+                </button>
+                <button
+                  onClick={playNovaDailyTip}
+                  className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold cursor-pointer transition-all ${
+                    speaking
+                      ? 'bg-brand-500/20 text-brand-400 border-brand-500/40'
+                      : isDark ? 'border-[#1e2d45] hover:bg-[#1e2d45] text-slate-300' : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                  }`}
+                >
+                  <Volume2 size={15} /> {speaking ? 'Speaking...' : "Hear Nova's Greeting"}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -72,10 +136,10 @@ export default function HomePage() {
           <div className="flex items-center justify-between gap-2 mb-2.5">
             <div>
               <p className="text-brand-200 text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
-                Daily XP Mission
+                Daily Goal Progress
               </p>
               <h2 className="text-white font-bold text-base sm:text-lg">
-                {todayProgress.xpEarned >= todayProgress.xpGoal ? '🎉 Mission Completed!' : 'Keep Speaking & Learn'}
+                {todayProgress.xpEarned >= todayProgress.xpGoal ? '🎉 Daily Mission Accomplished!' : 'Speaking Practice Mission'}
               </h2>
             </div>
             <div className="text-right shrink-0">
@@ -95,14 +159,14 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
             <p className="text-brand-100 text-[11px] sm:text-xs">
               {xpPct >= 100
-                ? 'Great job today! You hit your speaking goal.'
-                : `${todayProgress.xpGoal - todayProgress.xpEarned} XP left to complete today's mission.`}
+                ? 'Great speaking progress! You completed your daily goal.'
+                : `${todayProgress.xpGoal - todayProgress.xpEarned} XP left to earn today.`}
             </p>
             <button
-              onClick={() => setActivePage('learn')}
+              onClick={() => setActiveLesson(nextLesson)}
               className="inline-flex items-center gap-1 font-semibold text-[11px] sm:text-xs bg-white/20 hover:bg-white/30 active:scale-95 px-3 py-1.5 rounded-full transition-all shrink-0 cursor-pointer"
             >
-              Start Lesson <ChevronRight size={13} />
+              Practice Now <ChevronRight size={13} />
             </button>
           </div>
         </div>
@@ -110,61 +174,15 @@ export default function HomePage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           <StatCard icon={Zap}       value={`${todayProgress.xpEarned} XP`} label="Today's XP"     color="bg-warn-500"    theme={theme} />
-          <StatCard icon={BookOpen}  value={todayProgress.lessonsCompleted}  label="Lessons Done"   color="bg-brand-600"  theme={theme} />
+          <StatCard icon={BookOpen}  value={todayProgress.lessonsCompleted}  label="Lessons Passed" color="bg-brand-600"  theme={theme} />
           <StatCard icon={Flame}     value={`${todayProgress.streak}d`}      label="Day Streak"     color="bg-accent-500" theme={theme} />
-          <StatCard icon={Trophy}    value={completedLessons.length}          label="Completed"      color="bg-success-500" theme={theme} />
+          <StatCard icon={Trophy}    value={completedLessons.length}          label="Total Mastered" color="bg-success-500" theme={theme} />
         </div>
-
-        {/* Next Lesson Callout */}
-        {nextLesson && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Up Next in Syllabus
-              </h3>
-              <span className={`text-[11px] font-medium ${isDark ? 'text-brand-400' : 'text-brand-600'}`}>
-                Unit {nextLesson.unitId?.toUpperCase() || '1'}
-              </span>
-            </div>
-
-            <button
-              onClick={() => setActivePage('learn')}
-              className={`w-full flex items-center gap-3 sm:gap-4 p-3.5 sm:p-4 rounded-2xl border text-left transition-all hover:scale-[1.005] active:scale-[0.99]
-                ${isDark ? 'bg-[#161f2e] border-[#1e2d45] hover:border-brand-500/50' : 'bg-white border-[#c7d7f8] hover:border-brand-300 shadow-xs'}
-              `}
-            >
-              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 flex items-center justify-center shrink-0 shadow-md shadow-brand-600/20">
-                <BookOpen size={20} className="text-white" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className={`font-bold text-sm sm:text-base truncate ${isDark ? 'text-white' : 'text-slate-800'}`}>
-                  {nextLesson.title}
-                </p>
-                <p className={`text-xs truncate ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                  {nextLesson.titleBn}
-                </p>
-                <div className="flex flex-wrap items-center gap-2 mt-1">
-                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider ${
-                    isDark ? 'bg-brand-500/20 text-brand-300' : 'bg-brand-100 text-brand-700'
-                  }`}>
-                    {nextLesson.type}
-                  </span>
-                  <span className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    ~{nextLesson.duration}m · +{nextLesson.xp} XP
-                  </span>
-                </div>
-              </div>
-              <div className={`p-2 rounded-xl shrink-0 ${isDark ? 'bg-white/5 text-brand-400' : 'bg-brand-50 text-brand-600'}`}>
-                <ChevronRight size={18} />
-              </div>
-            </button>
-          </div>
-        )}
 
         {/* Quick Practice Actions */}
         <div>
           <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-            Quick Practice
+            Direct Spoken Practice
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             <button
@@ -174,30 +192,30 @@ export default function HomePage() {
               <div className="flex items-center justify-between mb-2">
                 <MessageCircle size={22} />
                 <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
-                  Live AI ⚡
+                  Female Voice AI 🎙️
                 </span>
               </div>
-              <p className="font-bold text-sm sm:text-base">Speak with Nova</p>
-              <p className="text-xs text-emerald-100 mt-0.5">24/7 spoken conversation in English & Bengali</p>
+              <p className="font-bold text-sm sm:text-base">1-on-1 Chat with Nova</p>
+              <p className="text-xs text-emerald-100 mt-0.5">Talk freely in English or Bengali anytime</p>
             </button>
 
             <button
-              onClick={() => setActivePage('learn')}
+              onClick={() => setActiveLesson(nextLesson)}
               className="p-4 rounded-2xl bg-gradient-to-br from-accent-500 to-orange-600 text-white shadow-md shadow-accent-500/20 text-left transition-all hover:scale-[1.01] active:scale-[0.99] cursor-pointer"
             >
               <div className="flex items-center justify-between mb-2">
                 <Mic size={22} />
                 <span className="text-[10px] font-bold bg-white/20 px-2 py-0.5 rounded-full">
-                  Pronunciation 🎙️
+                  Pronunciation Drill 🎯
                 </span>
               </div>
-              <p className="font-bold text-sm sm:text-base">Daily Practice</p>
-              <p className="text-xs text-orange-100 mt-0.5">Test speaking clarity and reduce hesitation</p>
+              <p className="font-bold text-sm sm:text-base">Speech Accuracy Test</p>
+              <p className="text-xs text-orange-100 mt-0.5">Real-time word match and pronunciation check</p>
             </button>
           </div>
         </div>
 
-        {/* Course Roadmap Progress */}
+        {/* Course Roadmap */}
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className={`text-xs sm:text-sm font-bold uppercase tracking-wider ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -207,7 +225,7 @@ export default function HomePage() {
               onClick={() => setActivePage('learn')}
               className="text-xs font-semibold text-brand-500 hover:text-brand-400 cursor-pointer"
             >
-              View Full Syllabus →
+              Full Syllabus →
             </button>
           </div>
 

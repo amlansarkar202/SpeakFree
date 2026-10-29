@@ -1,6 +1,4 @@
-// Gemini AI Service for SpeakFree
-// Uses @google/generative-ai with a free API key set via env
-
+// Gemini AI Service for SpeakFree — Personalized Bilingual Tutor (Nova)
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 function getApiKey() {
@@ -31,46 +29,53 @@ function getModel(modelName = 'gemini-3.5-flash-lite') {
 }
 
 /**
- * Build a system context for the AI tutor
+ * Persona: Nova — A warm, supportive, human-like bilingual English mentor & tutor
  */
 function buildSystemPrompt(userProfile) {
   const { name, level, learningGoal, nativeLanguage } = userProfile || {};
-  return `You are "Nova", a warm, encouraging and expert English tutor for SpeakFree.
-The learner's name is ${name || 'the learner'}.
-Their native language is ${nativeLanguage || 'Bengali (বাংলা)'}.
-Their current English level is: ${level || 'Beginner'}.
-Their goal: ${learningGoal || 'Daily conversational English'}.
+  return `You are "Nova", a patient, warm, and highly skilled female English teacher who specializes in helping native Bengali speakers become fluent and confident in English.
 
-Rules:
-1. ALWAYS respond in a mix of simple English + Bengali explanations when the learner seems confused or stuck.
-2. Keep responses SHORT (2-4 sentences max) unless asked to explain deeply.
-3. When the learner makes a grammar/pronunciation mistake, gently correct them with: ✏️ "You could say: [corrected version]"
-4. Use emojis lightly to feel warm and human, not robotic.
-5. If they write/speak in Bengali, understand it and respond with the English equivalent, then ask them to try saying it.
-6. Give XP-style encouragement: "Great job! +10 XP 🎉", "Almost there!", etc.
-7. For pronunciation: use phonetics in brackets e.g., "comfortable [KUM-fer-tuh-bul]".
-8. Never make the learner feel bad about mistakes — normalize them as part of learning.
-9. When asked to roleplay (interview, ordering food, etc.), stay in character as the other person.
-10. Language of instruction when needed: Bengali (বাংলা).`;
+Learner Profile:
+- Name: ${name || 'বন্ধু'}
+- Native Language: ${nativeLanguage || 'Bengali (বাংলা)'}
+- English Grip/Level: ${level || 'Beginner'}
+- Learning Goal: ${learningGoal || 'Confident Daily English Speaking'}
+
+Your Persona & Teaching Rules:
+1. Speak as a real, living mentor — warm, supportive, conversational, and natural. NEVER sound like a generic robotic AI or a textbook.
+2. Natural Bilingual Fluency:
+   - When introducing new ideas or explaining difficult concepts, use friendly, natural Bengali (e.g., "দারুণ চেষ্টা!", "চলো এটা সহজ করে বুঝি...").
+   - Give the clean, natural English equivalent right after.
+   - Teach pronunciation phonetically when helpful (e.g. "schedule [SKED-jool]").
+3. Strict Accountability & Honest Mentorship:
+   - When the learner makes a mistake in grammar or vocabulary, GENTLY but CLEARLY pinpoint it:
+     ✏️ "You said: [what they said], but a native speaker would say: [natural way]"
+     Explain WHY in simple Bengali.
+   - Do NOT just hand out praise when their grammar is wrong. Help them fix it!
+4. Voice-Optimized Responses:
+   - Your messages will be spoken aloud to the student! Keep sentences conversational, rhythmic, and natural (2 to 4 sentences).
+   - Avoid long bulleted essays. Talk to them like you're sitting together in a private 1-on-1 tutoring session.
+5. If the learner writes or speaks to you in Bengali or Banglish:
+   - Understand them completely.
+   - Respond in warm Bengali and teach them how to say that exact thought in natural, confident English.
+   - Ask them to repeat it back to you!`;
 }
 
 /**
- * Send a chat message to Gemini and get a response
+ * Send a chat message to Nova and get a spoken conversational response
  */
 export async function sendToGemini(userMessage, chatHistory = [], userProfile = null) {
   const m = getModel();
   if (!m) {
-    // Fallback offline mode
     return getFallbackResponse(userMessage, userProfile);
   }
 
   try {
     const systemPrompt = buildSystemPrompt(userProfile);
 
-    // Build history for Gemini (alternating user/model)
     const history = chatHistory
       .filter((msg) => msg.role === 'user' || msg.role === 'assistant')
-      .slice(-10) // last 10 exchanges
+      .slice(-8)
       .map((msg) => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
@@ -80,91 +85,93 @@ export async function sendToGemini(userMessage, chatHistory = [], userProfile = 
       history,
       systemInstruction: systemPrompt,
       generationConfig: {
-        maxOutputTokens: 300,
-        temperature: 0.85,
+        maxOutputTokens: 280,
+        temperature: 0.8,
       },
     });
 
     const result = await chat.sendMessage(userMessage);
-    return result.response.text();
+    return result.response.text().trim();
   } catch (err) {
-    console.error('Gemini error:', err);
+    console.error('Nova AI chat error:', err);
     return getFallbackResponse(userMessage, userProfile);
   }
 }
 
 /**
- * Evaluate a lesson answer / speaking response
+ * Strict AI Evaluation of Spoken Lesson Response
  */
 export async function evaluateResponse(userAnswer, expectedContext, userProfile = null) {
   const m = getModel();
-  if (!m) return { score: 80, feedback: 'Good effort! Keep practicing.', correction: null };
+  if (!m) {
+    return {
+      score: 75,
+      passed: true,
+      feedback: 'Good effort! Focus on speaking every word clearly.',
+      spokenFeedback: 'Good try! Remember to speak with confidence. Let us keep practicing!',
+      correction: null,
+      pronunciation_tip: 'Practice pausing slightly between phrases.',
+    };
+  }
 
   try {
-    const prompt = `You are an English tutor evaluating a learner's answer.
-Context/Expected: "${expectedContext}"
-Learner answered: "${userAnswer}"
+    const prompt = `You are Nova, an expert English spoken tutor evaluating a Bengali learner.
+Context/Question given to learner: "${expectedContext}"
+What the learner actually said: "${userAnswer}"
 
-Respond in JSON with this exact format:
+Evaluate their answer honestly based on:
+1. Relevance to the question
+2. Grammar and tense accuracy
+3. Natural sentence structure
+
+Return strictly valid JSON:
 {
-  "score": <0-100>,
-  "feedback": "<short encouraging feedback in 1-2 sentences>",
-  "correction": "<corrected version if needed, or null>",
-  "pronunciation_tip": "<a quick pronunciation tip if relevant, or null>"
+  "score": <integer from 0 to 100 representing true accuracy>,
+  "passed": <true if score >= 65, else false>,
+  "spokenFeedback": "<a warm, natural spoken reaction in 1-2 sentences. If they made mistakes, explain in simple Bengali and English what to fix>",
+  "correction": "<the most natural way to say it in English, or null if their answer was already great>",
+  "pronunciation_tip": "<a helpful pronunciation or pacing tip, or null>"
 }`;
 
     const result = await m.generateContent(prompt);
     const text = result.response.text().trim();
-    // Extract JSON
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    if (jsonMatch) {
+      const parsed = JSON.parse(jsonMatch[0]);
+      return {
+        score: typeof parsed.score === 'number' ? parsed.score : 70,
+        passed: Boolean(parsed.passed ?? parsed.score >= 65),
+        feedback: parsed.spokenFeedback || 'Good effort!',
+        spokenFeedback: parsed.spokenFeedback || 'Good attempt!',
+        correction: parsed.correction || null,
+        pronunciation_tip: parsed.pronunciation_tip || null,
+      };
+    }
   } catch (err) {
-    console.error('Eval error:', err);
+    console.error('Nova evaluation error:', err);
   }
-  return { score: 75, feedback: 'Good try! Practice makes perfect. 💪', correction: null, pronunciation_tip: null };
+
+  return {
+    score: 70,
+    passed: true,
+    feedback: 'Good attempt! Keep practicing your pacing.',
+    spokenFeedback: 'দারুণ চেষ্টা! You are getting better with each sentence.',
+    correction: null,
+    pronunciation_tip: null,
+  };
 }
 
 /**
- * Generate a personalized lesson based on level
- */
-export async function generateDailyLesson(userProfile) {
-  const m = getModel();
-  if (!m) return null;
-
-  const { level, learningGoal } = userProfile || {};
-  try {
-    const prompt = `Generate a short English speaking lesson for a ${level} learner whose goal is "${learningGoal}".
-Return JSON:
-{
-  "title": "lesson title",
-  "topic": "topic in one word",
-  "objective": "what they'll learn",
-  "vocabulary": [{"word": "", "meaning_bengali": "", "example": ""}],
-  "phrases": [{"english": "", "bengali": ""}],
-  "practice_prompt": "a roleplay or speaking prompt to practice"
-}
-Keep it SHORT (3 vocab words, 3 phrases max). Respond only JSON.`;
-
-    const result = await m.generateContent(prompt);
-    const text = result.response.text().trim();
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) return JSON.parse(jsonMatch[0]);
-  } catch (err) {
-    console.error('Lesson gen error:', err);
-  }
-  return null;
-}
-
-/**
- * Offline fallback responses
+ * Nova's offline fallback responses with authentic Bengali-English mentoring
  */
 function getFallbackResponse(message, userProfile) {
+  const name = userProfile?.name || 'বন্ধু';
   const responses = [
-    "That's a great attempt! 🌟 Keep practicing — consistency is key to fluency.\n✏️ Try speaking slowly and clearly first, then speed will come naturally.",
-    "আপনি ভালো করছেন! (You're doing well!) Don't worry about mistakes — every mistake is a lesson. 💪",
-    "Interesting! Let me help you with that. Try saying it again, and focus on each word clearly.",
-    "Great effort! Remember: [COM-fort-uh-bul] = comfortable. Practice in front of a mirror! 🪞",
-    "You're improving every day! 📈 Set a small goal: speak 5 English sentences today. You can do it!",
+    `দারুণ প্রশ্ন, ${name}! ইংরেজিতে কথা বলার সময় ভুল হওয়া একদম স্বাভাবিক। সব সময় মনে রাখবে: "Practice makes a person confident."\n\nচলো আবার চেষ্টা করি!`,
+    `Very good attempt! তুমি যদি বলতে চাও "আমি বুঝতে পেরেছি", তাহলে বলবে: "I got it" অথবা "I understand". এখন আমার সাথে বলো: "I got it!" 😊`,
+    `অসাধারণ চেষ্টা! Keep speaking out loud. লজ্জা বা ভয় দূরে সরিয়ে দিয়ে প্রতিদিন ৫টি করে নতুন বাক্য বলো। You can do it! 💪`,
+    `Good question! যখন কারো সাথে দেখা হবে, সহজ করে বলবে: "Hello! It's so nice to see you." উচ্চারণ করবে: [nais tu see yoo].`,
+    `খুব ভালো! Don't worry about perfect grammar right now. আগে স্পষ্ট করে কথা বলা শুরু করো, তারপর গতি ও নিখুঁত ভাব নিজেই চলে আসবে। 🌟`,
   ];
   return responses[Math.floor(Math.random() * responses.length)];
 }
