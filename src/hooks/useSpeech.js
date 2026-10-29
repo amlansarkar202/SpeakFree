@@ -54,6 +54,54 @@ export function unlockAudio() {
   }
 }
 
+// Browser speech synthesis fallback with natural female voice priority if offline
+function speakBrowserFallback(cleanText) {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) {
+      return resolve(false);
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      const hasBengali = /[\u0980-\u09FF]/.test(cleanText);
+      const utter = new SpeechSynthesisUtterance(cleanText);
+      utter.rate = hasBengali ? 0.95 : 0.92;
+      utter.pitch = 1.05; // Slightly higher, warm female tone
+
+      const voices = window.speechSynthesis.getVoices();
+      if (hasBengali) {
+        utter.lang = 'bn-IN';
+        const bnVoice = voices.find(
+          (v) =>
+            v.name.toLowerCase().includes('tanishaa') ||
+            v.name.toLowerCase().includes('bengali') ||
+            v.name.toLowerCase().includes('bangla') ||
+            v.lang.startsWith('bn')
+        );
+        if (bnVoice) utter.voice = bnVoice;
+      } else {
+        utter.lang = 'en-US';
+        const enVoice = voices.find(
+          (v) =>
+            (v.name.toLowerCase().includes('natural') ||
+              v.name.toLowerCase().includes('neural') ||
+              v.name.toLowerCase().includes('jenny') ||
+              v.name.toLowerCase().includes('zira') ||
+              v.name.toLowerCase().includes('samantha')) &&
+            v.lang.startsWith('en')
+        );
+        if (enVoice) utter.voice = enVoice;
+      }
+
+      utter.onend = () => resolve(true);
+      utter.onerror = () => resolve(false);
+      window.speechSynthesis.speak(utter);
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
 // ── BILINGUAL TEXT-TO-SPEECH (TTS) ──────────────────────────────────────────
 export function useTTS() {
   const [speaking, setSpeaking] = useState(false);
@@ -69,10 +117,15 @@ export function useTTS() {
         audio.currentTime = 0;
       } catch {}
     }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
     setSpeaking(false);
   }, []);
 
-  // Main speak function: plays seamless bilingual audio via /api/tts
+  // Main speak function: plays seamless expressive neural audio via /api/tts
   const speak = useCallback(
     async (text) => {
       if (!text || typeof text !== 'string') return;
@@ -83,6 +136,7 @@ export function useTTS() {
       const cleanText = text
         .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
         .replace(/[*_~`#[\]]/g, ' ')
+        .replace(/\s+/g, ' ')
         .trim();
 
       if (!cleanText) {
@@ -91,16 +145,12 @@ export function useTTS() {
       }
 
       const audio = getGlobalAudio();
-      if (!audio) {
-        setSpeaking(false);
-        return;
-      }
 
       try {
         let blobUrl = audioBlobCache.get(cleanText);
 
         if (!blobUrl) {
-          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 450))}`;
+          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 480))}`;
           const res = await fetch(ttsUrl);
           if (!res.ok) throw new Error(`TTS server returned status ${res.status}`);
           const blob = await res.blob();
@@ -108,26 +158,34 @@ export function useTTS() {
           audioBlobCache.set(cleanText, blobUrl);
         }
 
-        if (isCancelledRef.current) return;
+        if (isCancelledRef.current || !audio) return;
 
         audio.src = blobUrl;
 
-        audio.onended = () => {
-          if (!isCancelledRef.current) setSpeaking(false);
-        };
-
-        audio.onerror = () => {
-          if (!isCancelledRef.current) setSpeaking(false);
-        };
-
-        const playPromise = audio.play();
-        if (playPromise !== undefined) {
-          await playPromise;
-        }
+        await new Promise((resolve) => {
+          audio.onended = () => {
+            if (!isCancelledRef.current) setSpeaking(false);
+            resolve();
+          };
+          audio.onerror = () => {
+            if (!isCancelledRef.current) setSpeaking(false);
+            resolve();
+          };
+          const playPromise = audio.play();
+          if (playPromise !== undefined) {
+            playPromise.catch(() => {
+              if (!isCancelledRef.current) setSpeaking(false);
+              resolve();
+            });
+          }
+        });
       } catch (err) {
-        console.warn('Audio playback notice:', err.message);
+        console.warn('Network TTS notice, attempting browser natural voice fallback:', err.message);
         if (!isCancelledRef.current) {
-          setSpeaking(false);
+          await speakBrowserFallback(cleanText);
+          if (!isCancelledRef.current) {
+            setSpeaking(false);
+          }
         }
       }
     },
