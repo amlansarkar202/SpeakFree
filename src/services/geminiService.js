@@ -3,19 +3,30 @@
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Reads key from .env file OR from Settings UI (localStorage) — whichever is set
-const API_KEY =
-  import.meta.env.VITE_GEMINI_API_KEY ||
-  localStorage.getItem('VITE_GEMINI_API_KEY') ||
-  '';
+function getApiKey() {
+  const key =
+    localStorage.getItem('VITE_GEMINI_API_KEY') ||
+    import.meta.env.VITE_GEMINI_API_KEY ||
+    '';
+  if (!key || key.includes('paste_') || key.includes('your_gemini')) {
+    return null;
+  }
+  return key.trim();
+}
 
 let genAI = null;
+let cachedKey = null;
 let model = null;
 
 function getModel() {
-  if (!API_KEY) return null;
-  if (!genAI) genAI = new GoogleGenerativeAI(API_KEY);
-  if (!model) model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const key = getApiKey();
+  if (!key) return null;
+
+  if (!genAI || cachedKey !== key) {
+    cachedKey = key;
+    genAI = new GoogleGenerativeAI(key);
+    model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  }
   return model;
 }
 
@@ -156,4 +167,16 @@ function getFallbackResponse(message, userProfile) {
     "You're improving every day! 📈 Set a small goal: speak 5 English sentences today. You can do it!",
   ];
   return responses[Math.floor(Math.random() * responses.length)];
+}
+
+export function hasLiveAi() {
+  return Boolean(getApiKey());
+}
+
+export function setGeminiKey(key) {
+  if (key) {
+    localStorage.setItem('VITE_GEMINI_API_KEY', key.trim());
+  } else {
+    localStorage.removeItem('VITE_GEMINI_API_KEY');
+  }
 }

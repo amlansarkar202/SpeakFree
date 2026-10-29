@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Mic, MicOff, Volume2, VolumeX, RefreshCw, Sparkles } from 'lucide-react';
 import useAppStore from '../store/useAppStore';
-import { sendToGemini } from '../services/geminiService';
+import { sendToGemini, hasLiveAi, setGeminiKey } from '../services/geminiService';
 import { useTTS, useSTT } from '../hooks/useSpeech';
 
 function Message({ msg, theme, onSpeak }) {
@@ -131,10 +131,28 @@ export default function ChatPage() {
             <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-success-400 border-2 border-current" />
           </div>
           <div>
-            <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Nova</p>
-            <p className={`text-[11px] flex items-center gap-1 ${isDark ? 'text-success-400' : 'text-success-600'}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-success-400 inline-block animate-pulse" />
-              Online · AI Tutor
+            <div className="flex items-center gap-1.5">
+              <p className={`font-bold text-sm ${isDark ? 'text-white' : 'text-slate-800'}`}>Nova</p>
+              {hasLiveAi() ? (
+                <span className="text-[10px] bg-brand-500/15 text-brand-400 font-semibold px-2 py-0.5 rounded-full">
+                  Gemini Flash ⚡
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                    const key = prompt('Enter your free Gemini API key (aistudio.google.com):');
+                    if (key !== null) { setGeminiKey(key); window.location.reload(); }
+                  }}
+                  className="text-[10px] bg-warn-500/15 text-warn-400 hover:bg-warn-500/25 font-semibold px-2 py-0.5 rounded-full cursor-pointer transition-all"
+                  title="Click to connect free Gemini AI key"
+                >
+                  Offline (Tap to link AI) 🔑
+                </button>
+              )}
+            </div>
+            <p className={`text-[11px] flex items-center gap-1 ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full inline-block animate-pulse ${hasLiveAi() ? 'bg-success-400' : 'bg-warn-400'}`} />
+              {hasLiveAi() ? 'Active AI Spoken Tutor' : 'Fallback Mode'}
             </p>
           </div>
         </div>

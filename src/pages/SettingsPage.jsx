@@ -2,8 +2,9 @@ import { Sun, Moon, Key, Bell, Globe, ChevronRight, Info, Heart, Shield, RotateC
 import useAppStore from '../store/useAppStore';
 import { LEVELS, TIMELINES } from '../data/curriculum';
 import { signOut } from '../services/authService';
+import { hasLiveAi, setGeminiKey } from '../services/geminiService';
 
-function SettingRow({ icon: Icon, label, labelBn, action, isDark }) {
+function SettingRow({ icon: Icon, label, labelBn, action, isDark, badge }) {
   return (
     <button
       onClick={action}
@@ -14,7 +15,10 @@ function SettingRow({ icon: Icon, label, labelBn, action, isDark }) {
         <Icon size={17} className={isDark ? 'text-brand-400' : 'text-brand-600'} />
       </div>
       <div className="flex-1">
-        <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{label}</p>
+        <div className="flex items-center gap-2">
+          <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-slate-800'}`}>{label}</p>
+          {badge}
+        </div>
         {labelBn && <p className={`text-[11px] ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>{labelBn}</p>}
       </div>
       <ChevronRight size={16} className={isDark ? 'text-slate-600' : 'text-slate-400'} />
@@ -162,8 +166,19 @@ export default function SettingsPage() {
         <div className="space-y-2">
           <SettingRow
             icon={Key} isDark={isDark}
-            label="Gemini API Key"
-            labelBn="বিনামূল্যে AI ব্যবহার করুন"
+            label="Gemini AI Engine"
+            labelBn={hasLiveAi() ? "সংযুক্ত (Gemini 1.5 Flash সক্রিয়)" : "বিনামূল্যে AI সংযুক্ত করুন"}
+            badge={
+              hasLiveAi() ? (
+                <span className="text-[10px] bg-success-500/15 text-success-400 font-semibold px-2 py-0.5 rounded-full">
+                  Connected ⚡
+                </span>
+              ) : (
+                <span className="text-[10px] bg-warn-500/15 text-warn-400 font-semibold px-2 py-0.5 rounded-full">
+                  Offline Mode
+                </span>
+              )
+            }
             action={handleApiKey}
           />
           <SettingRow
