@@ -58,81 +58,105 @@ export default function LessonView({ lesson, onClose }) {
     resetTranscript();
     setPhrasePassed(false);
     setPhraseAccuracy(null);
+    setChallengeFeedback(null);
+    setChallengePassed(false);
     const intro = getStepIntro();
     if (intro) {
       speak(intro);
     }
   }, [currentStepIndex]);
 
+  // Verify Phrase Spoken Accuracy
+  function verifyPhrase(textToVerify) {
+    const spoken = (textToVerify !== undefined ? textToVerify : transcript || '').trim();
+    if (!spoken) {
+      speak('Please speak the phrase or type your answer so I can evaluate it!');
+      return;
+    }
+
+    const result = evaluateSpokenAccuracy(currentPhrase.english, spoken);
+    setPhraseAccuracy(result);
+
+    if (result.passed) {
+      setPhrasePassed(true);
+      speak(`দারুণ হয়েছে! You achieved ${result.score}% accuracy. Perfect! Tap continue to proceed.`);
+    } else {
+      setPhrasePassed(false);
+      const missingWords = result.missing.length > 0 ? result.missing.slice(0, 2).join(', ') : 'clarity';
+      speak(`Good attempt! You achieved ${result.score}%. Remember to pronounce "${missingWords}". Listen to me again and try once more!`);
+    }
+  }
+
   // Handle Phrase Speech Verification (Repeating English phrase)
-  async function handlePhraseMicToggle() {
+  function handlePhraseMicToggle() {
     unlockAudio();
     if (listening) {
       stopListening();
-      if (!transcript.trim()) {
-        speak('কোনো কথা শোনা যায়নি। মাইক চেপে স্পষ্ট করে ইংরেজি বাক্যটি বলো!');
-        return;
-      }
-
-      // Check strict speech accuracy against target English phrase
-      const result = evaluateSpokenAccuracy(currentPhrase.english, transcript);
-      setPhraseAccuracy(result);
-
-      if (result.passed) {
-        setPhrasePassed(true);
-        speak(`দারুণ হয়েছে! You pronounced it with ${result.score}% accuracy. Excellent! Tap next to continue.`);
-      } else {
-        setPhrasePassed(false);
-        const missingWords = result.missing.length > 0 ? result.missing.join(', ') : 'clarity';
-        speak(`Almost! You got ${result.score}%. Remember to emphasize: "${missingWords}". Listen to me again: "${currentPhrase.english}". Try one more time!`);
-      }
+      // On stop, the onEnd callback will automatically evaluate with the final transcript
     } else {
       resetTranscript();
       setPhraseAccuracy(null);
-      startListening({ lang: 'en-US' });
+      startListening({
+        lang: 'en-US',
+        onEnd: (finalSpoken) => {
+          if (finalSpoken && finalSpoken.trim()) {
+            verifyPhrase(finalSpoken.trim());
+          }
+        },
+      });
+    }
+  }
+
+  // Verify Open Challenge Evaluation via Gemini AI
+  async function verifyChallenge(textToVerify) {
+    const spoken = (textToVerify !== undefined ? textToVerify : transcript || '').trim();
+    if (!spoken) {
+      speak('Please speak your answer into the microphone so I can evaluate your English!');
+      return;
+    }
+
+    setEvaluating(true);
+    const evalResult = await evaluateResponse(spoken, challengePrompt, userProfile);
+    setEvaluating(false);
+    setChallengeFeedback({ ...evalResult, userSpoken: spoken });
+
+    if (evalResult.passed) {
+      setChallengePassed(true);
+      speak(evalResult.spokenFeedback || 'অসাধারণ! You spoke naturally and clearly. You passed the challenge!');
+    } else {
+      setChallengePassed(false);
+      speak(evalResult.spokenFeedback || 'Good try! Listen to my suggestion and try saying your answer once more.');
     }
   }
 
   // Handle Open Challenge Evaluation via Gemini AI
-  async function handleChallengeMicToggle() {
+  function handleChallengeMicToggle() {
     unlockAudio();
     if (listening) {
       stopListening();
-      if (!transcript.trim()) {
-        speak('Please speak your answer into the microphone so I can evaluate your English!');
-        return;
-      }
-
-      setEvaluating(true);
-      const evalResult = await evaluateResponse(transcript, challengePrompt, userProfile);
-      setEvaluating(false);
-      setChallengeFeedback({ ...evalResult, userSpoken: transcript });
-
-      if (evalResult.passed) {
-        setChallengePassed(true);
-        speak(evalResult.spokenFeedback || 'অসাধারণ! You spoke naturally and clearly. You passed the challenge!');
-      } else {
-        setChallengePassed(false);
-        speak(evalResult.spokenFeedback || 'Good try! Listen to my suggestion and try saying your answer once more.');
-      }
     } else {
       resetTranscript();
       setChallengeFeedback(null);
-      startListening({ lang: 'en-US' });
+      startListening({
+        lang: 'en-US',
+        onEnd: (finalSpoken) => {
+          if (finalSpoken && finalSpoken.trim()) {
+            verifyChallenge(finalSpoken.trim());
+          }
+        },
+      });
     }
   }
 
-  // Advance to next step (ONLY allowed if passed!)
+  // Advance to next step
   function handleNext() {
     unlockAudio();
     if (isChallengeStep) {
-      if (!challengePassed) return;
       markLessonDone(lesson.id);
       completedLesson(lesson.xp);
       setCurrentStepIndex(totalSteps); // move to graduation celebration
       speak(`Congratulations ${userProfile?.name || 'বন্ধু'}! You completed ${lesson.title} and earned ${lesson.xp} XP! I am so proud of your progress today!`);
     } else {
-      if (!phrasePassed) return;
       setCurrentStepIndex((prev) => prev + 1);
     }
   }
@@ -265,7 +289,7 @@ export default function LessonView({ lesson, onClose }) {
             </div>
             <p className={`text-xs sm:text-sm leading-relaxed ${sub()}`}>
               {currentPhrase
-                ? `আমার সাথে স্পষ্ট করে ইংরেজি বাক্যটি বলো। অন্তত ৭০% নির্ভুল না হলে পরের ধাপে যাওয়া যাবে না!`
+                ? `আমার সাথে স্পষ্ট করে ইংরেজি বাক্যটি বলো। উচ্চারণ যাচাই করে পরের ধাপে এগিয়ে চলো!`
                 : `এবার বাস্তব পরিস্থিতিতে ইংরেজিতে উত্তর দেওয়ার পালা। চিন্তা না করে নিজের মতো করে বলো!`}
             </p>
           </div>
@@ -284,7 +308,7 @@ export default function LessonView({ lesson, onClose }) {
                 "{currentPhrase.english}"
               </h2>
               <p className={`text-xs sm:text-sm font-medium ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-                🇧🇩 {currentPhrase.bengali}
+                <span className="font-semibold opacity-75 mr-1.5">বাংলা অর্থ:</span>{currentPhrase.bengali}
               </p>
 
               <button
@@ -322,15 +346,29 @@ export default function LessonView({ lesson, onClose }) {
               </div>
 
               <p className={`text-xs font-semibold ${text()}`}>
-                {listening ? 'Listening to your voice... tap to finish' : 'Tap the mic and speak the phrase aloud in English'}
+                {listening ? 'Listening to your voice... speak now' : 'Tap the mic and speak the phrase aloud in English'}
               </p>
 
               {transcript && (
                 <div className={`mt-3 p-3 rounded-xl text-left border ${
                   isDark ? 'bg-[#252d3a] border-[#2a3f5e]' : 'bg-brand-50 border-brand-200'
                 }`}>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${sub()}`}>What you said:</p>
-                  <p className={`text-xs sm:text-sm font-semibold ${text()}`}>"{transcript}"</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${sub()}`}>What you said:</p>
+                    <button
+                      onClick={() => verifyPhrase(transcript)}
+                      className="text-[11px] font-bold text-brand-500 hover:underline cursor-pointer"
+                    >
+                      Check Again ↺
+                    </button>
+                  </div>
+                  <p className={`text-xs sm:text-sm font-semibold mb-2 ${text()}`}>"{transcript}"</p>
+                  <button
+                    onClick={() => verifyPhrase(transcript)}
+                    className="w-full py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+                  >
+                    🔍 Verify Pronunciation (উচ্চারণ যাচাই করুন)
+                  </button>
                 </div>
               )}
 
@@ -344,7 +382,7 @@ export default function LessonView({ lesson, onClose }) {
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="font-bold text-xs sm:text-sm flex items-center gap-1.5">
                       {phraseAccuracy.passed ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                      {phraseAccuracy.passed ? 'Pronunciation Verified! ✓' : 'Needs Practice (Under 70%)'}
+                      {phraseAccuracy.passed ? 'Pronunciation Verified! ✓' : 'Practice Suggestion'}
                     </span>
                     <span className="text-xs font-black">
                       Score: {phraseAccuracy.score}%
@@ -357,20 +395,37 @@ export default function LessonView({ lesson, onClose }) {
               )}
             </div>
 
-            {/* Next Button (STRICTLY LOCKED UNTIL PASSED) */}
-            <button
-              onClick={handleNext}
-              disabled={!phrasePassed}
-              className={`
-                w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
-                ${phrasePassed
-                  ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/30 cursor-pointer active:scale-98'
-                  : isDark ? 'bg-[#252d3a] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
-              `}
-            >
-              <span>{phrasePassed ? 'Correct! Continue to Next Step' : '🔒 Speak phrase correctly (70%+ accuracy) to unlock'}</span>
-              <ArrowRight size={16} />
-            </button>
+            {/* Next Button & Fallback Progress */}
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={handleNext}
+                disabled={!phrasePassed}
+                className={`
+                  w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
+                  ${phrasePassed
+                    ? 'bg-brand-600 hover:bg-brand-700 text-white shadow-lg shadow-brand-600/30 cursor-pointer active:scale-98'
+                    : isDark ? 'bg-[#252d3a] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                `}
+              >
+                <span>{phrasePassed ? 'Correct! Continue to Next Step' : '🔒 Speak phrase correctly to unlock'}</span>
+                <ArrowRight size={16} />
+              </button>
+
+              {/* If user attempted, never lock them out */}
+              {!phrasePassed && phraseAccuracy && (
+                <button
+                  onClick={() => {
+                    setPhrasePassed(true);
+                    handleNext();
+                  }}
+                  className={`w-full py-2.5 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer ${
+                    isDark ? 'text-brand-300 hover:bg-[#191e28]' : 'text-brand-600 hover:bg-brand-50'
+                  }`}
+                >
+                  I have practiced enough · Continue to Next Step →
+                </button>
+              )}
+            </div>
           </div>
         )}
 
@@ -390,7 +445,7 @@ export default function LessonView({ lesson, onClose }) {
                 "{challengePrompt}"
               </p>
               <p className={`text-xs ${sub()}`}>
-                Nova will evaluate your grammar, vocabulary, and natural sentence flow. You must score at least 65% to graduate!
+                Nova will evaluate your grammar, vocabulary, and natural sentence flow. Speak clearly in English to graduate!
               </p>
             </div>
 
@@ -426,7 +481,14 @@ export default function LessonView({ lesson, onClose }) {
                   isDark ? 'bg-[#252d3a] border-[#2a3f5e]' : 'bg-brand-50 border-brand-200'
                 }`}>
                   <p className={`text-[10px] font-bold uppercase tracking-wider mb-0.5 ${sub()}`}>Your speech:</p>
-                  <p className={`text-xs sm:text-sm font-semibold ${text()}`}>"{transcript}"</p>
+                  <p className={`text-xs sm:text-sm font-semibold mb-2 ${text()}`}>"{transcript}"</p>
+                  <button
+                    onClick={() => verifyChallenge(transcript)}
+                    disabled={evaluating}
+                    className="w-full py-1.5 rounded-lg bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    🔍 Evaluate Spoken Answer (উত্তর যাচাই করুন)
+                  </button>
                 </div>
               )}
 
@@ -476,19 +538,35 @@ export default function LessonView({ lesson, onClose }) {
             </div>
 
             {/* Finish Lesson Button (LOCKED UNTIL PASSED) */}
-            <button
-              onClick={handleNext}
-              disabled={!challengePassed}
-              className={`
-                w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
-                ${challengePassed
-                  ? 'bg-success-500 hover:bg-success-600 text-white shadow-lg shadow-success-500/30 cursor-pointer active:scale-98'
-                  : isDark ? 'bg-[#252d3a] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
-              `}
-            >
-              <Award size={16} />
-              <span>{challengePassed ? `Claim Lesson Completion (+${lesson.xp} XP)` : '🔒 Pass the speaking challenge (65%+) to complete'}</span>
-            </button>
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={handleNext}
+                disabled={!challengePassed}
+                className={`
+                  w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all
+                  ${challengePassed
+                    ? 'bg-success-500 hover:bg-success-600 text-white shadow-lg shadow-success-500/30 cursor-pointer active:scale-98'
+                    : isDark ? 'bg-[#252d3a] text-slate-500 cursor-not-allowed border border-[#2a3f5e]' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                `}
+              >
+                <Award size={16} />
+                <span>{challengePassed ? `Claim Lesson Completion (+${lesson.xp} XP)` : '🔒 Pass the speaking challenge to complete'}</span>
+              </button>
+
+              {!challengePassed && challengeFeedback && (
+                <button
+                  onClick={() => {
+                    setChallengePassed(true);
+                    handleNext();
+                  }}
+                  className={`w-full py-2.5 rounded-xl text-xs font-semibold text-center transition-all cursor-pointer ${
+                    isDark ? 'text-brand-300 hover:bg-[#191e28]' : 'text-brand-600 hover:bg-brand-50'
+                  }`}
+                >
+                  Save feedback & complete lesson with current score →
+                </button>
+              )}
+            </div>
           </div>
         )}
 

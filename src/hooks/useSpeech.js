@@ -1,15 +1,19 @@
 // SpeakFree Natural Bilingual Speech Engine (TTS + STT)
+// Exclusively uses the high-fidelity expressive human voice (/api/tts)
+// Completely removes robotic emotionless browser speech synthesis
 // Features:
-// 1. High-fidelity natural female audio via Google Studio TTS endpoint (/api/tts)
-//    - Concatenates native female Bengali (বাংলা) & English into a single smooth MP3 stream
-// 2. Bilingual Speech Recognition (STT):
-//    - Listens in both Bengali (bn-IN/bn-BD) and English (en-US)
-// 3. Robust browser audio unlocker to bypass Autoplay restrictions across mobile & desktop
+// 1. Single audio tutor: Pure, warm, natural female voice in Bengali & English
+// 2. Blob-buffered audio playback with in-memory caching to eliminate buffering race conditions
+// 3. User interaction audio unlocker across mobile & desktop
+// 4. Intelligent STT with synchronous final transcript capture & callbacks
+// 5. Smart pronunciation evaluator with contraction & homophone normalization
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 
 // Singleton audio element for reliable, unblocked mobile/desktop playback
 let globalAudioElement = null;
+let audioUnlocked = false;
+const audioBlobCache = new Map();
 
 function getGlobalAudio() {
   if (typeof window === 'undefined') return null;
@@ -22,16 +26,32 @@ function getGlobalAudio() {
   return globalAudioElement;
 }
 
+// Global unlocker: automatically primes audio on the first user tap/click/keypress
+if (typeof window !== 'undefined') {
+  const handleFirstInteraction = () => {
+    unlockAudio();
+    window.removeEventListener('click', handleFirstInteraction);
+    window.removeEventListener('touchstart', handleFirstInteraction);
+    window.removeEventListener('keydown', handleFirstInteraction);
+  };
+  window.addEventListener('click', handleFirstInteraction, { passive: true });
+  window.addEventListener('touchstart', handleFirstInteraction, { passive: true });
+  window.addEventListener('keydown', handleFirstInteraction, { passive: true });
+}
+
 // Unlock audio permission on user interaction
 export function unlockAudio() {
+  if (audioUnlocked) return;
   const audio = getGlobalAudio();
-  if (audio && audio.paused && !audio.src) {
-    // 0.05s silent audio buffer
-    audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
-    audio.play().then(() => {
-      audio.pause();
-      audio.removeAttribute('src');
-    }).catch(() => {});
+  if (audio) {
+    try {
+      // 0.05s silent audio buffer to establish user-activation context
+      audio.src = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+      audio.play().then(() => {
+        audioUnlocked = true;
+        audio.pause();
+      }).catch(() => {});
+    } catch {}
   }
 }
 
@@ -48,58 +68,12 @@ export function useTTS() {
       try {
         audio.pause();
         audio.currentTime = 0;
-        audio.removeAttribute('src');
-      } catch {}
-    }
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      try {
-        window.speechSynthesis.cancel();
       } catch {}
     }
     setSpeaking(false);
   }, []);
 
-  // Browser speech synthesis fallback (only used if network is completely offline)
-  const speakWithBrowserSynth = useCallback((text) => {
-    return new Promise((resolve) => {
-      if (!window.speechSynthesis) return resolve(false);
-
-      const hasBengali = /[\u0980-\u09FF]/.test(text);
-      const utter = new SpeechSynthesisUtterance(text);
-      utter.rate = hasBengali ? 0.95 : 0.92;
-      utter.pitch = 1.05;
-
-      const voices = window.speechSynthesis.getVoices();
-      if (hasBengali) {
-        utter.lang = 'bn-IN';
-        const bnVoice = voices.find(
-          (v) =>
-            v.lang.startsWith('bn') ||
-            v.name.toLowerCase().includes('bengali') ||
-            v.name.toLowerCase().includes('bangla')
-        );
-        if (bnVoice) utter.voice = bnVoice;
-      } else {
-        utter.lang = 'en-US';
-        const femaleEn = voices.find(
-          (v) =>
-            (v.name.toLowerCase().includes('natural') ||
-              v.name.toLowerCase().includes('neural') ||
-              v.name.toLowerCase().includes('female') ||
-              v.name.toLowerCase().includes('zira') ||
-              v.name.toLowerCase().includes('samantha')) &&
-            v.lang.startsWith('en')
-        );
-        if (femaleEn) utter.voice = femaleEn;
-      }
-
-      utter.onend = () => resolve(true);
-      utter.onerror = () => resolve(false);
-      window.speechSynthesis.speak(utter);
-    });
-  }, []);
-
-  // Main speak function: plays seamless bilingual audio via /api/tts
+  // Main speak function: plays seamless expressive audio via /api/tts exclusively
   const speak = useCallback(
     async (text) => {
       if (!text || typeof text !== 'string') return;
@@ -123,19 +97,28 @@ export function useTTS() {
         return;
       }
 
-      const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 450))}`;
-
       try {
-        audio.src = ttsUrl;
+        let blobUrl = audioBlobCache.get(cleanText);
+
+        if (!blobUrl) {
+          const ttsUrl = `/api/tts?text=${encodeURIComponent(cleanText.slice(0, 450))}`;
+          const res = await fetch(ttsUrl);
+          if (!res.ok) throw new Error(`TTS server returned status ${res.status}`);
+          const blob = await res.blob();
+          blobUrl = URL.createObjectURL(blob);
+          audioBlobCache.set(cleanText, blobUrl);
+        }
+
+        if (isCancelledRef.current) return;
+
+        audio.src = blobUrl;
+
         audio.onended = () => {
           if (!isCancelledRef.current) setSpeaking(false);
         };
-        audio.onerror = async () => {
-          if (!isCancelledRef.current) {
-            // Fall back to browser synth if offline
-            await speakWithBrowserSynth(cleanText);
-            setSpeaking(false);
-          }
+
+        audio.onerror = () => {
+          if (!isCancelledRef.current) setSpeaking(false);
         };
 
         const playPromise = audio.play();
@@ -143,14 +126,15 @@ export function useTTS() {
           await playPromise;
         }
       } catch (err) {
-        console.warn('Audio play restricted or failed, falling back:', err);
+        // If autoplay is temporarily restricted (e.g., before first user tap),
+        // quietly reset speaking state without ever falling back to robotic synthesizer.
+        console.warn('Audio playback notice:', err.message);
         if (!isCancelledRef.current) {
-          await speakWithBrowserSynth(cleanText);
           setSpeaking(false);
         }
       }
     },
-    [stop, speakWithBrowserSynth]
+    [stop]
   );
 
   useEffect(() => {
@@ -166,6 +150,7 @@ export function useSTT() {
   const [transcript, setTranscript] = useState('');
   const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
+  const transcriptRef = useRef('');
 
   const startListening = useCallback((options = {}) => {
     const SpeechRecognition =
@@ -182,8 +167,11 @@ export function useSTT() {
       } catch {}
     }
 
+    transcriptRef.current = '';
+    setTranscript('');
+    setError(null);
+
     const recognition = new SpeechRecognition();
-    // Support Bengali (bn-IN / bn-BD) or English (en-US / en-IN)
     recognition.lang = options.lang || 'en-US';
     recognition.interimResults = true;
     recognition.continuous = false;
@@ -192,15 +180,18 @@ export function useSTT() {
     recognition.onstart = () => {
       setListening(true);
       setError(null);
+      transcriptRef.current = '';
       setTranscript('');
-      unlockAudio(); // Unlock audio on user interaction
+      unlockAudio();
     };
 
     recognition.onresult = (event) => {
       const current = Array.from(event.results)
         .map((r) => r[0].transcript)
         .join('');
+      transcriptRef.current = current;
       setTranscript(current);
+      options.onTranscriptChange?.(current);
     };
 
     recognition.onerror = (event) => {
@@ -212,7 +203,8 @@ export function useSTT() {
 
     recognition.onend = () => {
       setListening(false);
-      options.onEnd?.();
+      const finalText = transcriptRef.current;
+      options.onEnd?.(finalText);
     };
 
     recognitionRef.current = recognition;
@@ -232,30 +224,105 @@ export function useSTT() {
     setListening(false);
   }, []);
 
-  const resetTranscript = useCallback(() => setTranscript(''), []);
+  const resetTranscript = useCallback(() => {
+    transcriptRef.current = '';
+    setTranscript('');
+  }, []);
 
   return {
     listening,
     transcript,
+    transcriptRef,
     error,
     startListening,
     stopListening,
     resetTranscript,
+    setTranscript,
   };
 }
 
 // ── REAL SPEECH ACCURACY EVALUATOR ──────────────────────────────────────────
-export function evaluateSpokenAccuracy(expectedText, spokenText) {
-  const clean = (str) =>
-    (str || '')
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
+const CONTRACTIONS = {
+  "i'm": ['i', 'am'],
+  "it's": ['it', 'is'],
+  "dont": ['do', 'not'],
+  "don't": ['do', 'not'],
+  "cant": ['can', 'not'],
+  "can't": ['can', 'not'],
+  "cannot": ['can', 'not'],
+  "we're": ['we', 'are'],
+  "you're": ['you', 'are'],
+  "they're": ['they', 'are'],
+  "that's": ['that', 'is'],
+  "what's": ['what', 'is'],
+  "i'll": ['i', 'will'],
+  "we'll": ['we', 'will'],
+  "let's": ['let', 'us'],
+};
 
-  const expWords = clean(expectedText);
-  const actWords = clean(spokenText);
+const HOMOPHONES = {
+  meat: 'meet',
+  too: 'to',
+  two: 'to',
+  hear: 'here',
+  bye: 'by',
+  buy: 'by',
+  know: 'no',
+  there: 'their',
+  their: 'there',
+  theyre: 'there',
+};
+
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j] + 1);
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function wordsMatch(w1, w2) {
+  if (!w1 || !w2) return false;
+  if (w1 === w2) return true;
+  if (HOMOPHONES[w1] === w2 || HOMOPHONES[w2] === w1 || HOMOPHONES[w1] === HOMOPHONES[w2]) return true;
+  const maxDist = Math.max(w1.length, w2.length) > 5 ? 2 : 1;
+  return levenshtein(w1, w2) <= maxDist;
+}
+
+function normalizeWords(text) {
+  const raw = (text || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9'\s]/g, ' ')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  const out = [];
+  for (const w of raw) {
+    if (CONTRACTIONS[w]) {
+      out.push(...CONTRACTIONS[w]);
+    } else {
+      const c = w.replace(/[^a-z0-9]/g, '');
+      if (c) out.push(c);
+    }
+  }
+  return out;
+}
+
+export function evaluateSpokenAccuracy(expectedText, spokenText) {
+  const expWords = normalizeWords(expectedText);
+  const actWords = normalizeWords(spokenText);
 
   if (!expWords.length || !actWords.length) {
     return {
@@ -265,37 +332,41 @@ export function evaluateSpokenAccuracy(expectedText, spokenText) {
       total: expWords.length,
       missing: expWords,
       feedback: 'Nothing was detected. Please tap the mic and speak clearly!',
-      feedbackBn: 'কোনো কথা শোনা যায়নি। মাইক চেপে স্পষ্ট করে বলুন!',
+      feedbackBn: 'কোনো কথা শোনা যায়নি। স্পষ্ট করে বলুন!',
     };
   }
 
   let matched = 0;
   const missing = [];
+  const actPool = [...actWords];
 
-  for (const w of expWords) {
-    if (actWords.includes(w)) {
+  for (const ew of expWords) {
+    const foundIdx = actPool.findIndex((aw) => wordsMatch(ew, aw));
+    if (foundIdx !== -1) {
       matched++;
+      actPool.splice(foundIdx, 1);
     } else {
-      missing.push(w);
+      missing.push(ew);
     }
   }
 
-  const score = Math.round((matched / expWords.length) * 100);
-  const passed = score >= 70;
+  const score = Math.min(100, Math.round((matched / expWords.length) * 100));
+  // 60%+ passes!
+  const passed = score >= 60;
 
   let feedback = '';
   let feedbackBn = '';
 
-  if (score === 100) {
-    feedback = 'Flawless pronunciation! Every word was spoken clearly.';
-    feedbackBn = 'চমৎকার উচ্চারণ! সব শব্দ নিখুঁত হয়েছে।';
-  } else if (score >= 70) {
-    feedback = `Great job! You achieved ${score}% accuracy.`;
-    feedbackBn = `দারুণ হয়েছে! আপনি ${score}% সঠিকভাবে বলতে পেরেছেন।`;
+  if (score >= 90) {
+    feedback = 'Flawless pronunciation! Every word was clear and confident.';
+    feedbackBn = 'চমৎকার উচ্চারণ! প্রতিটি শব্দ স্পষ্ট ও সুন্দর হয়েছে।';
+  } else if (score >= 60) {
+    feedback = `Good job! You pronounced it with ${score}% accuracy.`;
+    feedbackBn = `খুব সুন্দর! আপনি ${score}% সঠিকভাবে বলতে পেরেছেন।`;
   } else {
     const missWord = missing.slice(0, 2).join(', ');
-    feedback = `You scored ${score}%. Try to emphasize: "${missWord}". Repeat after me!`;
-    feedbackBn = `আপনি ${score}% পেয়েছেন। "${missWord}" শব্দটির ওপর জোর দিন। আবার বলুন!`;
+    feedback = `You scored ${score}%. Try emphasizing: "${missWord}". Listen to Nova and try again!`;
+    feedbackBn = `আপনি ${score}% পেয়েছেন। "${missWord}" শব্দটিতে আরেকটু জোর দিন।`;
   }
 
   return {
