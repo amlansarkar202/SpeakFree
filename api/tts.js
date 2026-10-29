@@ -1,7 +1,7 @@
 // SpeakFree Universal Neural AI Tutor Voice Engine
 // Exclusively uses the authentic Bengali female voice (bn-IN-TanishaaNeural)
 // for all features: Lessons, Nova AI Chat, Home Greetings, and Pronunciation.
-// Completely eliminates the old monotone Google Translate bot and robotic browser voices.
+// Completely eliminates the old monotone Google Translate bot (tl=bn) and robotic browser voices.
 
 import { MsEdgeTTS, OUTPUT_FORMAT } from 'msedge-tts';
 
@@ -15,7 +15,7 @@ async function synthesizeTanishaa(text) {
   return new Promise((resolve, reject) => {
     const timeout = setTimeout(() => {
       reject(new Error('Tanishaa synthesis timeout'));
-    }, 9000);
+    }, 12000);
 
     try {
       const { audioStream } = tts.toStream(text);
@@ -49,6 +49,7 @@ export default async function handler(req, res) {
     // Clean emojis, asterisks, brackets, and markdown artifacts
     const cleanText = text
       .replace(/<[^>]+>/g, ' ')
+      .replace(/https?:\/\/\S+/g, '')
       .replace(/[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F700}-\u{1F77F}\u{1F780}-\u{1F7FF}\u{1F800}-\u{1F8FF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FA6F}\u{1FA70}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu, '')
       .replace(/[*_~`#[\]]/g, ' ')
       .replace(/\s+/g, ' ')
@@ -68,8 +69,8 @@ export default async function handler(req, res) {
       return res.status(200).send(cached);
     }
 
-    // Synthesize exclusively using the authentic female voice
-    const audioBuffer = await synthesizeTanishaa(cleanText.slice(0, 600));
+    // Synthesize exclusively using the authentic female voice (bn-IN-TanishaaNeural)
+    const audioBuffer = await synthesizeTanishaa(cleanText.slice(0, 800));
 
     if (!audioBuffer || audioBuffer.length === 0) {
       return res.status(502).json({ error: 'Audio synthesis failed' });
